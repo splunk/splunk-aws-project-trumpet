@@ -1,0 +1,342 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation template for CloudTrail checking lambdas and step function harness",
+    "Parameters": {
+        "SplunkHttpEventCollectorToken": {
+            "Description": "HEC token from the Splunk server which will receive updates on the status of the action as it completes. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+            "Type": "String"
+        },
+        "SplunkHttpEventCollectorURL": {
+            "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - https://server:port/services/collector)",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "LambdaLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": "/aws/lambda/trumpet-describeTrail",
+                "RetentionInDays": 7
+            }
+        },
+        "LambdaSubscriptionFilter": {
+            "Type": "AWS::Logs::SubscriptionFilter",
+            "DependsOn": [
+                "LogProcessorLambdaPermission"
+            ],
+            "Properties": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "FilterPattern": "",
+                "LogGroupName": "/aws/lambda/trumpet-describeTrail"
+            }
+        },
+        "BackingLambdaExecutionLogProcessor": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/"
+            }
+        },
+        "LogProcessorLambdaPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "Principal": {
+                    "Fn::Join": [
+                        ".",
+                        [
+                            "logs",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            {
+                                "Ref": "AWS::URLSuffix"
+                            }
+                        ]
+                    ]
+                },
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            "arn",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            "logs",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            "log-group",
+                            "/aws/lambda/trumpet-describeTrail",
+                            "*"
+                        ]
+                    ]
+                }
+            }
+        },
+        "BackingLambdaLogProcessor": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "nstone-generic-ar",
+                    "S3Key": "2d7d18cdcf2314fb1342834c3bc15954"
+                },
+                "Description": "Stream events from AWS CloudWatch Logs to Splunk HTTP event collector",
+                "FunctionName": "BackingLambdaLogProcessor",
+                "Handler": "index.handler",
+                "MemorySize": 512,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaExecutionLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs6.10",
+                "Timeout": 30,
+                "Environment": {
+                    "Variables": {
+                        "SPLUNK_HEC_URL": {
+                            "Ref": "SplunkHttpEventCollectorURL"
+                        },
+                        "SPLUNK_HEC_TOKEN": {
+                            "Ref": "SplunkHttpEventCollectorToken"
+                        }
+                    }
+                }
+            }
+        },
+        "RunLambdaOnChange": {
+            "Type": "Custom::CheckTrails",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaFunction",
+                        "Arn"
+                    ]
+                }
+            },
+            "DependsOn": [
+                "BackingLambdaFunction"
+            ]
+        },
+        "BackingLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "nstone-generic-ar",
+                    "S3Key": "0380a92f601ea5b5a55b6f3fccd572f8"
+                },
+                "FunctionName": "trumpet-describeTrail",
+                "Handler": "describeTrail.lambda_handler",
+                "MemorySize": "128",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python2.7",
+                "Timeout": "90"
+            }
+        },
+        "BackingLambdaInvokePermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "apigateway.amazonaws.com"
+            }
+        },
+        "BackingLambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "LambdaPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:*"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "cloudtrail:DescribeTrails"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "StateRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Policies": [
+                    {
+                        "PolicyName": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "trumpetStepPolicy",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ".amazonaws.com"
+                                ]
+                            ]
+                        },
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "lambda:InvokeFunction"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "states.",
+                                                {
+                                                    "Ref": "AWS::Region"
+                                                },
+                                                ".amazonaws.com"
+                                            ]
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "trumpetStateMachine": {
+            "Type": "AWS::StepFunctions::StateMachine",
+            "Properties": {
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "StateRole",
+                        "Arn"
+                    ]
+                },
+                "DefinitionString": {
+                    "Fn::Join": [
+                        "\n",
+                        [
+                            "{",
+                            "  \"StartAt\": \"describeTrails\", ",
+                            "  \"States\": { ",
+                            "    \"describeTrails\": { ",
+                            "      \"Type\": \"Task\", ",
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "      \"Resource\": \"",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "BackingLambdaFunction",
+                                                "Arn"
+                                            ]
+                                        },
+                                        "\", "
+                                    ]
+                                ]
+                            },
+                            "      \"End\": true ",
+                            "    }",
+                            "  }",
+                            "}"
+                        ]
+                    ]
+                }
+            },
+            "DependsOn": [
+                "StateRole"
+            ]
+        }
+    }
+}
