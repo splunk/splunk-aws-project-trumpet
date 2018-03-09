@@ -1,0 +1,128 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Serverless application for CloudTrail data ingest into Splunk through Kinesis Firehose",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Parameters": {
+    "SplunkHttpEventCollectorToken": {
+      "Description": "HEC token from the Splunk server which will receive updates on the status of the action as it completes. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+      "Type": "String"
+    },
+    "SplunkHttpEventCollectorURL": {
+      "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - server:port)",
+      "Type": "String"
+    },
+    "CloudTrailBucketName": {
+      "Description": "The name of the S3 bucket storage location that receives CloudTrail events.",
+      "Type": "String"
+    },
+    "KinesisFirehoseStreamName": {
+      "Description": "The name of the Kinesis Firehose Stream that will be created by this application",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "s3bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "LambdaFunctionCTMonitoring": {
+      "Type": "AWS::Serverless::Function",
+      "DependsOn": [
+        "LambdaFunctionCTMonitoringRole"
+      ],
+      "Properties": {
+        "Description": "Uses the Firehose PUT API to push CloudTrail events to a Firehose that delivers to Splunk",
+        "CodeUri": "cloudtrail-monitoring",
+        "FunctionName": "cloudtrail-monitoring",
+        "Handler": "cloudtrail-monitoring.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaFunctionCTMonitoringRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python2.7",
+        "Timeout": 90,
+        "Environment": { "Variables" : { "firehose_stream_name": "cloudtrail-monitoring" } }
+      }
+    },
+    "LambdaFunctionCTMonitoringRole": {
+      "Type": "AWS::IAM::Role",
+      "DependsOn": [
+        "s3bucket"
+      ],
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "LambdaFirehosePutPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:*:*:*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:getObject",
+                    "s3:putObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        {
+                          "Ref": "CloudTrailBucketName"
+                        },
+                        "/*"
+                      ]
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "firehose:PutRecord"
+                  ],
+                  "Resource": [
+                    "arn:aws:firehose:*:*:*"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

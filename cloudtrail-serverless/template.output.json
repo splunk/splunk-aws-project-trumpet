@@ -1,0 +1,318 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Serverless application for CloudTrail data ingest into Splunk through Kinesis Firehose",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Parameters": {
+        "SplunkHttpEventCollectorToken": {
+            "Description": "HEC token from the Splunk server which will receive updates on the status of the action as it completes. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+            "Type": "String"
+        },
+        "SplunkHttpEventCollectorURL": {
+            "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - server:port)",
+            "Type": "String"
+        },
+        "CloudTrailName": {
+            "Description": "The name fo the Trail that will be generated and logged into Splunk as a part fo this template's deployment",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "s3bucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            }
+        },
+        "BucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Ref": "s3bucket"
+                },
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "AWSCloudTrailAclCheck",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "cloudtrail.amazonaws.com"
+                            },
+                            "Action": "s3:GetBucketAcl",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:s3:::",
+                                        {
+                                            "Ref": "s3bucket"
+                                        }
+                                    ]
+                                ]
+                            }
+                        },
+                        {
+                            "Sid": "AWSCloudTrailWrite",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "cloudtrail.amazonaws.com"
+                            },
+                            "Action": "s3:PutObject",
+                            "Resource": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:aws:s3:::",
+                                        {
+                                            "Ref": "s3bucket"
+                                        },
+                                        "/AWSLogs/",
+                                        {
+                                            "Ref": "AWS::AccountId"
+                                        },
+                                        "/*"
+                                    ]
+                                ]
+                            },
+                            "Condition": {
+                                "StringEquals": {
+                                    "s3:x-amz-acl": "bucket-owner-full-control"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "trumpetTrail": {
+            "Type": "AWS::CloudTrail::Trail",
+            "DependsOn": [
+                "BucketPolicy"
+            ],
+            "Properties": {
+                "IsLogging": true,
+                "S3BucketName": {
+                    "Ref": "s3bucket"
+                },
+                "TrailName": {
+                    "Ref": "CloudTrailName"
+                }
+            }
+        },
+        "LambdaFunctionCTSimpleLogger": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Description": "Uses the Firehose PUT API to push CloudTrail events to a Firehose that delivers to Splunk",
+                "CodeUri": "s3://nstone-trumpet-test/f1f9a06d2cce9888b3e0f2c0414f3b8f",
+                "FunctionName": "cloudtrail-simple-logger",
+                "Handler": "cloudtrail-simple-logger.lambda_handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaFunctionCTSimpleLoggerRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python2.7",
+                "Timeout": 90,
+                "Environment": {
+                    "Variables": {
+                        "firehose_stream_name": "cloudtrail-monitoring"
+                    }
+                }
+            }
+        },
+        "LambdaFunctionCTSimpleLoggerRole": {
+            "Type": "AWS::IAM::Role",
+            "DependsOn": [
+                "s3bucket"
+            ],
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "LambdaCloudTrailSimpleLoggerPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:logs:*:*:*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:getObject",
+                                        "s3:putObject",
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "arn:aws:s3:::",
+                                                {
+                                                    "Ref": "s3bucket"
+                                                },
+                                                "/*"
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "LambdaLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": "/aws/lambda/cloudtrail-simple-logger",
+                "RetentionInDays": 7
+            }
+        },
+        "LambdaSubscriptionFilter": {
+            "Type": "AWS::Logs::SubscriptionFilter",
+            "DependsOn": [
+                "LogProcessorLambdaPermission"
+            ],
+            "Properties": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "FilterPattern": "",
+                "LogGroupName": "/aws/lambda/cloudtrail-simple-logger"
+            }
+        },
+        "BackingLambdaExecutionLogProcessor": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/"
+            }
+        },
+        "LogProcessorLambdaPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "Principal": {
+                    "Fn::Join": [
+                        ".",
+                        [
+                            "logs",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            {
+                                "Ref": "AWS::URLSuffix"
+                            }
+                        ]
+                    ]
+                },
+                "SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                },
+                "SourceArn": {
+                    "Fn::Join": [
+                        ":",
+                        [
+                            "arn",
+                            {
+                                "Ref": "AWS::Partition"
+                            },
+                            "logs",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            {
+                                "Ref": "AWS::AccountId"
+                            },
+                            "log-group",
+                            "/aws/lambda/cloudtrail-simple-logger",
+                            "*"
+                        ]
+                    ]
+                }
+            }
+        },
+        "BackingLambdaLogProcessor": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "CodeUri": "s3://nstone-trumpet-test/2d7d18cdcf2314fb1342834c3bc15954",
+                "Description": "Stream events from AWS CloudWatch Logs to Splunk HTTP event collector",
+                "FunctionName": "BackingLambdaLogProcessor",
+                "Handler": "index.handler",
+                "MemorySize": 512,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaExecutionLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "nodejs6.10",
+                "Timeout": 30,
+                "Environment": {
+                    "Variables": {
+                        "SPLUNK_HEC_URL": {
+                            "Ref": "SplunkHttpEventCollectorURL"
+                        },
+                        "SPLUNK_HEC_TOKEN": {
+                            "Ref": "SplunkHttpEventCollectorToken"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

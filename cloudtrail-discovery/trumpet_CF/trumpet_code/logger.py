@@ -37,7 +37,8 @@ class trumpetLogger(object):
         if lambda_message is None:
             lambda_message = self.lambda_context.function_name
         try:
-            print self.UI_STRING.format(date=log_time, lambda_message=lambda_message, status=lambda_status)
+            print json.loads(json.dumps(lambda_message))
+            #print self.UI_STRING.format(date=log_time, lambda_message=lambda_message, status=lambda_status)
         except Exception as e:
             print "Encountered exception while attempting to write base data: {}".format(str(e))
 
