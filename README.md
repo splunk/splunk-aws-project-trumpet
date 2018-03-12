@@ -56,17 +56,17 @@ https://confluence.splunk.com/display/~kamir/Splunk+Cloud+%3A+Project+Awesome-o
 
 # Package CloudFormation template:
 
-Update the { BucketName } with an existing bucket
+Update the { BucketName } with an existing bucket in us-west-1 (only has 4 trails up currently)
 
 ```
-aws cloudformation package --template trumpet_template --s3-bucket { BucketName } --output-template-file template.output.json --use-json
+aws cloudformation package --template trumpet_new_v0.1.json --s3-bucket { BucketName } --output-template-file template.output.json --use-json
 ```
 # Deploy CloudFormation template:
 
 Update the { StackName } with the name of the stack
 
 ```
-aws cloudformation deploy --template-file template.output.json --stack-name { StackName } --parameter-overrides SplunkHttpEventCollectorURL=https://54.202.136.110:8088/services/collector SplunkHttpEventCollectorToken=3c0c3b40-0940-4e29-8557-826f9cea1575 --capabilities CAPABILITY_IAM
+aws cloudformation deploy --template-file template.output.json --stack-name { StackName } --parameter-overrides CloudTrailName=TrumpetTrail SplunkHttpEventCollectorURL=https://54.202.136.110:8088/services/collector SplunkHttpEventCollectorToken=3c0c3b40-0940-4e29-8557-826f9cea1575 --capabilities CAPABILITY_IAM
 ```
 # Open Splunk and view lambda output
 
@@ -80,4 +80,4 @@ pw: Splunkr3k0g1t!
 
 (Search All time)
 
-index="main" host="lambda" lambda_status="success"
+index="main" sourcetype="aws:cloudtrail"
