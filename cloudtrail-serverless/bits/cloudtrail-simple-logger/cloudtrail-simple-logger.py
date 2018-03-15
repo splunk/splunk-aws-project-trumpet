@@ -1,7 +1,9 @@
-import boto3
-import json
 import gzip
+import json
 from io import BytesIO
+
+import boto3
+
 import logger
 
 

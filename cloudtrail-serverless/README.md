@@ -1,4 +1,11 @@
-## NOTE: Replace 'naive' logger with CT Grazer once it is open sourced
+## NOTES
+Replace 'naive' logger with CT Grazer once it is open sourced
+
+If config is set up, we should leverage the existing bucket
+
+If cloudtrail is set up, we should leverage the existing bucket
+
+If a region is at it's maximum amount of trails, CF template for new trail will fail, use existing
 
 # How to use
 
@@ -8,7 +15,7 @@ Update the { BucketName } with an existing bucket in us-west-1 (only has 4 trail
 
 Use the AWS CloudFormation console, or the following cli command
 ```
-aws cloudformation package --template trumpet_new_v0.1.json --s3-bucket { BucketName } --output-template-file template.output.json --use-json
+aws cloudformation package --template trumpet_new_trail_v0.1.json --s3-bucket { BucketName } --output-template-file template.output.json --use-json
 ```
 # Deploy CloudFormation template:
 

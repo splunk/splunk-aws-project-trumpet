@@ -33,7 +33,7 @@ const logger = new SplunkLogger(loggerConfig);
 const s3 = new aws.S3({ apiVersion: '2006-03-01' });
 
 exports.handler = (event, context, callback) => {
-    console.log('Received event:', JSON.stringify(event, null, 2));
+    //console.log('Received event:', JSON.stringify(event, null, 2));
 
     // First, configure logger to automatically add Lambda metadata and to hook into Lambda callback
     configureLogger(context, callback); // eslint-disable-line no-use-before-define

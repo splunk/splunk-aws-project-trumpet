@@ -1,0 +1,146 @@
+{
+  "Description": "Upload an object to an S3 bucket, triggering a Lambda event, returning the object key as a Stack Output.",
+  "Parameters": {
+    "BucketName": {
+      "Description": "S3 Bucket name (must already exist)",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "BucketConfiguration": {
+      "Type": "Custom::S3BucketConfiguration",
+      "DependsOn": [
+        "BucketPermission",
+        "NotificationBucketPolicy"
+      ],
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt": ["S3BucketConfiguration", "Arn"] },
+        "Bucket": { "Ref": "BucketName" },
+        "NotificationConfiguration": {
+          "LambdaFunctionConfigurations": [
+            {
+              "Events": [
+                "s3:ObjectCreated:*"
+              ],
+              "LambdaFunctionArn": { "Fn::GetAtt": ["BucketWatcher", "Arn"] }
+            }
+          ]
+        }
+      }
+    },
+    "S3BucketConfiguration": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "S3 Object Custom Resource",
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        "Code": {
+          "ZipFile": { "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  process.on('uncaughtException', e=>failed(e));\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n" }
+        },
+        "Timeout": 30,
+        "Runtime": "nodejs4.3"
+      }
+    },
+    "BucketPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": { "Ref": "BucketWatcher" },
+        "Principal": "s3.amazonaws.com",
+        "SourceAccount": { "Ref": "AWS::AccountId" },
+        "SourceArn": { "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "BucketName" }]] }
+      }
+    },
+    "BucketWatcher": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "Sends a Wait Condition signal to Handle when invoked",
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        "Code": {
+          "ZipFile": { "Fn::Sub": "exports.handler = function(event, context) {\n  console.log(\"Request received:\\n\", JSON.stringify(event));\n  var responseBody = JSON.stringify({\n    \"Status\" : \"SUCCESS\",\n    \"UniqueId\" : \"Key\",\n    \"Data\" : event.Records[0].s3.object.key,\n    \"Reason\" : \"\"\n  });\n  var https = require(\"https\");\n  var url = require(\"url\");\n  var parsedUrl = url.parse('${Handle}');\n  var options = {\n      hostname: parsedUrl.hostname,\n      port: 443,\n      path: parsedUrl.path,\n      method: \"PUT\",\n      headers: {\n          \"content-type\": \"\",\n          \"content-length\": responseBody.length\n      }\n  };\n  var request = https.request(options, function(response) {\n      console.log(\"Status code: \" + response.statusCode);\n      console.log(\"Status message: \" + response.statusMessage);\n      context.done();\n  });\n  request.on(\"error\", function(error) {\n      console.log(\"send(..) failed executing https.request(..): \" + error);\n      context.done();\n  });\n  request.write(responseBody);\n  request.end();\n};\n" }
+        },
+        "Timeout": 30,
+        "Runtime": "nodejs4.3"
+      }
+    },
+    "Handle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "Wait": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "Properties": {
+        "Handle": { "Ref": "Handle" },
+        "Timeout": 60
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "S3Policy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:PutObject",
+                    "S3:DeleteObject"
+                  ],
+                  "Resource": {"Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "BucketName" }]] }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "NotificationBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": { "Ref": "BucketName" },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutBucketNotification"
+              ],
+              "Resource": { "Fn::Join": ["", ["arn:aws:s3:::", { "Ref": "BucketName" }]] },
+              "Principal": {
+                "AWS": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "Result": {
+      "Value": { "Fn::GetAtt": ["Wait", "Data"] }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+Name of author(s):
+Patrick Shumate, Nicolas Stone
+
+Name and URL/repository of the project
+
+Description of the code or features you wish to contribute
+Are you providing the code at fix level as one-time contribution?
+What problem does your contribution solve generally?
+Who will benefit from using your contribution?
+What is the business case for Splunk for participating in this project? (i.e., how will the company benefit from this contribution?)
+
+It makes getting aws data in much easier. In combination with the Insights for AWS AMI, it is a one click install of all the logging architecture needed on the aws side to populate a good portion of the dashboards. CloudWatch logs come from
+
+Will it require devoting multiple resources/employees of Splunk? If so, to what extent?
+
+No
+
+List any third-party software included in the code you want to release and any licenses that apply to it (state NONE if not applicable)
+
+CT Grazer potentially, add license
+
+List any Splunk products or projects in which the code to be contributed is also used.  (state NONE if not applicable)
+
+None we are aware of.
+
+Does the contribution include any confidential information of Splunk?
+
+None we are aware of.
+
+Does Splunk have any patents or patent applications relating to the contribution?
+
+None we are aware of.
+
+What license is the project currently using? (NOTE: The OSS Committee recommends Apache 2.0 as a standard license for Splunk-hosted and managed open source projects unless facts warrant otherwise.)
+
+MIT
+
+Name of the VP-level or higher sponsor who has reviewed and supports the technical & business case
+
+TBD

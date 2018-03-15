@@ -1,0 +1,242 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Serverless application for CloudTrail data ingest into Splunk through a basic logger",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Parameters": {
+    "SplunkHttpEventCollectorURL": {
+      "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - https://server:port/services/collector)",
+      "Type": "String"
+    },
+    "SplunkHttpEventCollectorToken": {
+      "Description": "HEC token from the Splunk server which will receive updates on the status of the action as it completes. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+      "NoEcho" : "true",
+      "Type": "String"
+    },
+    "CloudTrailName": {
+      "Description": "The name of the new CloudTrail trail that will be generated and sent to Splunk once this template is deployed.",
+      "Type": "String"
+    },
+    "S3BucketName": {
+      "Description": "The name of the s3 bucket that the generated trail will populate with CloudTrail events.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "S3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {"Ref": "S3BucketName"},
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "BucketPolicy" : {
+      "Type" : "AWS::S3::BucketPolicy",
+      "Properties" : {
+        "Bucket" : {"Ref" : "S3Bucket"},
+        "PolicyDocument" : {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "AWSCloudTrailAclCheck",
+              "Effect": "Allow",
+              "Principal": { "Service":"cloudtrail.amazonaws.com"},
+              "Action": "s3:GetBucketAcl",
+              "Resource": { "Fn::GetAtt": ["S3Bucket", "Arn"] }
+            },
+            {
+              "Sid": "AWSCloudTrailWrite",
+              "Effect": "Allow",
+              "Principal": { "Service":"cloudtrail.amazonaws.com"},
+              "Action": "s3:PutObject",
+              "Resource": { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref":"S3Bucket"}, "/AWSLogs/", {"Ref":"AWS::AccountId"}, "/*"]]},
+              "Condition": {
+                "StringEquals": {
+                  "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:PutBucketNotification"
+              ],
+              "Resource": { "Fn::GetAtt": ["S3Bucket", "Arn"] },
+              "Principal": {
+                "AWS": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "trumpetTrail": {
+      "Type" : "AWS::CloudTrail::Trail",
+      "DependsOn": ["BucketPolicy", "S3BucketConfiguration"],
+      "Properties" : {
+        "IsLogging" : true,
+        "S3BucketName" : {
+          "Ref": "S3Bucket"
+        },
+        "TrailName": {
+            "Ref": "CloudTrailName"
+        }
+      }
+    },
+    "BackingLambdaExecutionLogProcessor": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+              "Service": [ "lambda.amazonaws.com" ]
+            },
+              "Action": [ "sts:AssumeRole" ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "LambdaCloudTrailLogProcessorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:getObject",
+                    "s3:putObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        {
+                          "Ref": "S3Bucket"
+                        },
+                        "/*"
+                      ]
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "ManagedPolicyArns": ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
+        "Path": "/"
+      }
+    },
+    "BackingLambdaLogProcessor": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "CodeUri": "cloudtrail-monitoring/logger",
+        "Description": "Stream events from AWS CloudWatch Logs to Splunk HTTP event collector",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": { "Fn::GetAtt": ["BackingLambdaExecutionLogProcessor", "Arn"] },
+        "Runtime": "nodejs6.10",
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "SPLUNK_HEC_URL": { "Ref": "SplunkHttpEventCollectorURL" },
+            "SPLUNK_HEC_TOKEN": { "Ref": "SplunkHttpEventCollectorToken"}
+          }
+        }
+      }
+    },
+
+    "BucketConfiguration": {
+      "Type": "Custom::S3BucketConfiguration",
+      "DependsOn": [
+        "BucketPermission"
+      ],
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt": ["S3BucketConfiguration", "Arn"] },
+        "Bucket": { "Ref": "S3Bucket" },
+        "NotificationConfiguration": {
+          "LambdaFunctionConfigurations": [
+            {
+              "Events": [
+                "s3:ObjectCreated:*"
+              ],
+              "LambdaFunctionArn": { "Fn::GetAtt": ["BackingLambdaLogProcessor", "Arn"] }
+            }
+          ]
+        }
+      }
+    },
+    "S3BucketConfiguration": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Description": "S3 Object Custom Resource",
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        "Code": {
+          "ZipFile": { "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n" }
+        },
+        "Timeout": 30,
+        "Runtime": "nodejs4.3"
+      }
+    },
+    "BucketPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": { "Ref": "BackingLambdaLogProcessor" },
+        "Principal": "s3.amazonaws.com",
+        "SourceAccount": { "Ref": "AWS::AccountId" },
+        "SourceArn": { "Fn::GetAtt": ["S3Bucket", "Arn"] }
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "S3Policy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:PutObject",
+                    "S3:DeleteObject"
+                  ],
+                  "Resource": { "Fn::GetAtt": ["S3Bucket", "Arn"] }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
