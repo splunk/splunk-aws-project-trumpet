@@ -1,11 +1,10 @@
 ## NOTES
 Replace 'naive' logger with CT Grazer once it is open sourced
 
-If config is set up, we should leverage the existing bucket
-
-If cloudtrail is set up, we should leverage the existing bucket
-
-If a region is at it's maximum amount of trails, CF template for new trail will fail, use existing
+- If config is set up, we should leverage the existing bucket
+- If cloudtrail is set up, we should leverage the existing bucket
+- If a region is at it's maximum amount of trails, CF template for new trail will fail, use existing trail/bucket
+- How should we create template? Too many permutations to have one per possiblity, we should create on fly based on params and/or discovery of existing buckets
 
 # How to use
 

@@ -3,10 +3,24 @@ Patrick Shumate, Nicolas Stone
 
 Name and URL/repository of the project
 
+https://git.splunk.com/projects/GSA/repos/aws-project-trumpet/browse/cloudtrail-serverless
+
 Description of the code or features you wish to contribute
+
+A CloudFormation template for deploying AWS infrastructure that uses a simplified HEC based logging architecture. A new user can deploy the template and, assuming their Splunk server has the AWS Add-on and App installed (but no configuration required), the elements of the AWS App using Cloudtrail, Config, or Billing sourcetypes will populate.
+
 Are you providing the code at fix level as one-time contribution?
+
+One-time contribution
+
 What problem does your contribution solve generally?
+
+Improves the speed of setting up the logging configuration on the aws side
+
 Who will benefit from using your contribution?
+
+New users of splunk using AWS.
+
 What is the business case for Splunk for participating in this project? (i.e., how will the company benefit from this contribution?)
 
 It makes getting aws data in much easier. In combination with the Insights for AWS AMI, it is a one click install of all the logging architecture needed on the aws side to populate a good portion of the dashboards. CloudWatch logs come from
