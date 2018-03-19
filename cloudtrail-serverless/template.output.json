@@ -7,9 +7,12 @@
             "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - https://server:port/services/collector)",
             "Type": "String"
         },
-        "SplunkHttpEventCollectorToken": {
-            "Description": "HEC token from the Splunk server which will receive updates on the status of the action as it completes. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
-            "NoEcho": "true",
+        "CloudTrailSplunkHttpEventCollectorToken": {
+            "Description": "The enabled HEC token on the Splunk environment for the CloudTrail sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+            "Type": "String"
+        },
+        "ConfigSplunkHttpEventCollectorToken": {
+            "Description": "The enabled HEC token on the Splunk environment for the Config sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
             "Type": "String"
         },
         "CloudTrailName": {
@@ -231,8 +234,8 @@
         "BackingLambdaCloudTrailLogProcessor": {
             "Type": "AWS::Serverless::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/a56d1bb9c58449c54e7b22b086c10d6c",
-                "Description": "Stream events from AWS CloudWatch Logs to Splunk HTTP event collector",
+                "CodeUri": "s3://nstone-trumpet-test-eu-1/c188c6f617d99302976f756002b1a921",
+                "Description": "Stream events from an AWS S3 bucket being updated by AWS CloudTrail to Splunk using HTTP event collector",
                 "Handler": "index.handler",
                 "MemorySize": 512,
                 "Role": {
@@ -249,7 +252,7 @@
                             "Ref": "SplunkHttpEventCollectorURL"
                         },
                         "SPLUNK_HEC_TOKEN": {
-                            "Ref": "SplunkHttpEventCollectorToken"
+                            "Ref": "CloudTrailSplunkHttpEventCollectorToken"
                         }
                     }
                 }
@@ -372,32 +375,6 @@
                         }
                     }
                 ]
-            }
-        },
-        "ConfigRecorder": {
-            "Type": "AWS::Config::ConfigurationRecorder",
-            "Properties": {
-                "RecordingGroup": {
-                    "AllSupported": true,
-                    "IncludeGlobalResourceTypes": true
-                },
-                "RoleARN": {
-                    "Fn::GetAtt": [
-                        "ConfigRole",
-                        "Arn"
-                    ]
-                }
-            }
-        },
-        "DeliveryChannel": {
-            "Type": "AWS::Config::DeliveryChannel",
-            "Properties": {
-                "ConfigSnapshotDeliveryProperties": {
-                    "DeliveryFrequency": "One_Hour"
-                },
-                "S3BucketName": {
-                    "Ref": "S3BucketConfig"
-                }
             }
         },
         "ConfigRole": {
@@ -538,7 +515,7 @@
         "BackingLambdaConfigLogProcessor": {
             "Type": "AWS::Serverless::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/a56d1bb9c58449c54e7b22b086c10d6c",
+                "CodeUri": "s3://nstone-trumpet-test-eu-1/c188c6f617d99302976f756002b1a921",
                 "Description": "Stream events from an AWS S3 bucket being updated by AWS config to Splunk using HTTP event collector",
                 "Handler": "index.handler",
                 "MemorySize": 512,
@@ -556,7 +533,7 @@
                             "Ref": "SplunkHttpEventCollectorURL"
                         },
                         "SPLUNK_HEC_TOKEN": {
-                            "Ref": "SplunkHttpEventCollectorToken"
+                            "Ref": "ConfigSplunkHttpEventCollectorToken"
                         }
                     }
                 }
@@ -679,6 +656,110 @@
                         }
                     }
                 ]
+            }
+        },
+        "ConfigurationRecorderSanitiser": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "CodeUri": "s3://nstone-trumpet-test-eu-1/ccd694d7112d6b8774a55d4c1784b69c",
+                "Handler": "index.handler",
+                "Runtime": "nodejs6.10",
+                "Timeout": 30,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "SanitizationLambdaExecutionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "SanitizationLambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "Stmt1460475162000",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "BackingLambdaExecutionCloudTrailLogProcessor",
+                                                "Arn"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "config:DescribeConfigurationRecorders",
+                                        "config:DescribeDeliveryChannels",
+                                        "config:PutConfigurationRecorder",
+                                        "config:PutDeliveryChannel"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "ConfigurationRecorderSanitisationResults": {
+            "Type": "Custom::ConfigurationRecorderSanitisationResults",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ConfigurationRecorderSanitiser",
+                        "Arn"
+                    ]
+                },
+                "RoleARN": {
+                    "Fn::GetAtt": [
+                        "BackingLambdaExecutionCloudTrailLogProcessor",
+                        "Arn"
+                    ]
+                },
+                "ConfigRecorderName": "ConfigRecorder",
+                "S3BucketConfig": {
+                    "Ref": "S3BucketConfig"
+                }
             }
         }
     }
