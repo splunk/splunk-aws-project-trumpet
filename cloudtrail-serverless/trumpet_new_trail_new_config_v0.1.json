@@ -234,7 +234,7 @@
     "BackingLambdaCloudTrailLogProcessor": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
-        "CodeUri": "s3-monitoring/logger",
+        "CodeUri": "lambda_code/logger",
         "Description": "Stream events from an AWS S3 bucket being updated by AWS CloudTrail to Splunk using HTTP event collector",
         "Handler": "index.handler",
         "MemorySize": 512,
@@ -541,7 +541,7 @@
     "BackingLambdaConfigLogProcessor": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
-        "CodeUri": "s3-monitoring/logger",
+        "CodeUri": "lambda_code/logger",
         "Description": "Stream events from an AWS S3 bucket being updated by AWS config to Splunk using HTTP event collector",
         "Handler": "index.handler",
         "MemorySize": 512,

@@ -55,7 +55,10 @@
             "Type": "AWS::S3::BucketPolicy",
             "Properties": {
                 "Bucket": {
-                    "Ref": "S3BucketConfig"
+                    "Fn::GetAtt": [
+                        "ConfigurationRecorderSanitisationResults",
+                        "FinalS3BucketConfig"
+                    ]
                 },
                 "PolicyDocument": {
                     "Version": "2012-10-17",
@@ -67,8 +70,8 @@
                             ],
                             "Resource": {
                                 "Fn::GetAtt": [
-                                    "S3BucketConfig",
-                                    "Arn"
+                                    "ConfigurationRecorderSanitisationResults",
+                                    "FinalS3BucketConfigArn"
                                 ]
                             },
                             "Principal": {
@@ -245,7 +248,7 @@
                     ]
                 },
                 "Runtime": "nodejs6.10",
-                "Timeout": 30,
+                "Timeout": 300,
                 "Environment": {
                     "Variables": {
                         "SPLUNK_HEC_URL": {
@@ -259,9 +262,10 @@
             }
         },
         "CloudTrailBucketConfiguration": {
-            "Type": "Custom::S3BucketConfiguration",
+            "Type": "Custom::S3CloudTrailBucketConfiguration",
             "DependsOn": [
-                "CloudTrailBucketPermission"
+                "CloudTrailBucketPermission",
+                "CloudTrailBucketPolicy"
             ],
             "Properties": {
                 "ServiceToken": {
@@ -306,7 +310,7 @@
                         "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n"
                     }
                 },
-                "Timeout": 30,
+                "Timeout": 300,
                 "Runtime": "nodejs4.3"
             }
         },
@@ -490,15 +494,9 @@
                                         "s3:ListBucket"
                                     ],
                                     "Resource": {
-                                        "Fn::Join": [
-                                            "",
-                                            [
-                                                "arn:aws:s3:::",
-                                                {
-                                                    "Ref": "S3BucketConfig"
-                                                },
-                                                "/*"
-                                            ]
+                                        "Fn::GetAtt": [
+                                            "ConfigurationRecorderSanitisationResults",
+                                            "FinalS3BucketConfigArn"
                                         ]
                                     }
                                 }
@@ -526,7 +524,7 @@
                     ]
                 },
                 "Runtime": "nodejs6.10",
-                "Timeout": 30,
+                "Timeout": 300,
                 "Environment": {
                     "Variables": {
                         "SPLUNK_HEC_URL": {
@@ -540,9 +538,10 @@
             }
         },
         "ConfigBucketConfiguration": {
-            "Type": "Custom::S3BucketConfiguration",
+            "Type": "Custom::S3ConfigBucketConfiguration",
             "DependsOn": [
-                "ConfigBucketPermission"
+                "ConfigBucketPermission",
+                "ConfigBucketPolicy"
             ],
             "Properties": {
                 "ServiceToken": {
@@ -552,7 +551,10 @@
                     ]
                 },
                 "Bucket": {
-                    "Ref": "S3BucketConfig"
+                    "Fn::GetAtt": [
+                        "ConfigurationRecorderSanitisationResults",
+                        "FinalS3BucketConfig"
+                    ]
                 },
                 "NotificationConfiguration": {
                     "LambdaFunctionConfigurations": [
@@ -587,7 +589,7 @@
                         "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n"
                     }
                 },
-                "Timeout": 30,
+                "Timeout": 300,
                 "Runtime": "nodejs4.3"
             }
         },
@@ -604,8 +606,8 @@
                 },
                 "SourceArn": {
                     "Fn::GetAtt": [
-                        "S3BucketConfig",
-                        "Arn"
+                        "ConfigurationRecorderSanitisationResults",
+                        "FinalS3BucketConfigArn"
                     ]
                 }
             }
@@ -647,8 +649,8 @@
                                     ],
                                     "Resource": {
                                         "Fn::GetAtt": [
-                                            "S3BucketConfig",
-                                            "Arn"
+                                            "ConfigurationRecorderSanitisationResults",
+                                            "FinalS3BucketConfigArn"
                                         ]
                                     }
                                 }
@@ -661,10 +663,10 @@
         "ConfigurationRecorderSanitiser": {
             "Type": "AWS::Serverless::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/ccd694d7112d6b8774a55d4c1784b69c",
+                "CodeUri": "s3://nstone-trumpet-test-eu-1/069d5bb49a172e62fbfc398d3fcd686e",
                 "Handler": "index.handler",
                 "Runtime": "nodejs6.10",
-                "Timeout": 30,
+                "Timeout": 300,
                 "Role": {
                     "Fn::GetAtt": [
                         "SanitizationLambdaExecutionRole",
@@ -700,7 +702,6 @@
                             "Version": "2012-10-17",
                             "Statement": [
                                 {
-                                    "Sid": "Stmt1460475162000",
                                     "Effect": "Allow",
                                     "Action": [
                                         "iam:PassRole"
@@ -729,10 +730,28 @@
                                         "config:DescribeConfigurationRecorders",
                                         "config:DescribeDeliveryChannels",
                                         "config:PutConfigurationRecorder",
-                                        "config:PutDeliveryChannel"
+                                        "config:StartConfigurationRecorder",
+                                        "config:PutDeliveryChannel",
+                                        "config:DescribeConfigurationRecorderStatus",
+                                        "config:DeleteConfigurationRecorder",
+                                        "config:DeleteDeliveryChannel"
                                     ],
                                     "Resource": [
                                         "*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::GetAtt": [
+                                                "ConfigRole",
+                                                "Arn"
+                                            ]
+                                        }
                                     ]
                                 }
                             ]
@@ -759,6 +778,18 @@
                 "ConfigRecorderName": "ConfigRecorder",
                 "S3BucketConfig": {
                     "Ref": "S3BucketConfig"
+                },
+                "S3BucketConfigArn": {
+                    "Fn::GetAtt": [
+                        "S3BucketConfig",
+                        "Arn"
+                    ]
+                },
+                "RecorderRoleArn": {
+                    "Fn::GetAtt": [
+                        "ConfigRole",
+                        "Arn"
+                    ]
                 }
             }
         }
