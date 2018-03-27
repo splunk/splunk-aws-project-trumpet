@@ -18,23 +18,12 @@
         "CloudTrailName": {
             "Description": "The name of the new CloudTrail trail that will be generated and sent to Splunk once this template is deployed.",
             "Type": "String"
-        },
-        "S3BucketNameCloudTrail": {
-            "Description": "The name of the s3 bucket that the generated trail will populate with CloudTrail events.",
-            "Type": "String"
-        },
-        "S3BucketNameConfig": {
-            "Description": "The name of the s3 bucket that the Config will populate with AWS Configuration events.",
-            "Type": "String"
         }
     },
     "Resources": {
         "S3BucketCloudTrail": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "BucketName": {
-                    "Ref": "S3BucketNameCloudTrail"
-                },
                 "VersioningConfiguration": {
                     "Status": "Enabled"
                 }
@@ -43,9 +32,6 @@
         "S3BucketConfig": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "BucketName": {
-                    "Ref": "S3BucketNameConfig"
-                },
                 "VersioningConfiguration": {
                     "Status": "Enabled"
                 }
@@ -350,7 +336,7 @@
                                             [
                                                 "arn:aws:s3:::",
                                                 {
-                                                    "Ref": "S3BucketNameConfig"
+                                                    "Ref": "S3BucketConfig"
                                                 },
                                                 "/AWSLogs/",
                                                 {
@@ -382,7 +368,7 @@
                                             [
                                                 "arn:aws:s3:::",
                                                 {
-                                                    "Ref": "S3BucketNameConfig"
+                                                    "Ref": "S3BucketConfig"
                                                 }
                                             ]
                                         ]
@@ -427,9 +413,21 @@
                                         "s3:ListBucket"
                                     ],
                                     "Resource": {
-                                        "Fn::GetAtt": [
-                                            "ConfigurationRecorderSanitisationResults",
-                                            "FinalS3BucketConfigArn"
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                {
+                                                    "Fn::GetAtt": [
+                                                        "ConfigurationRecorderSanitisationResults",
+                                                        "FinalS3BucketConfigArn"
+                                                    ]
+                                                },
+                                                "/AWSLogs/",
+                                                {
+                                                    "Ref": "AWS::AccountId"
+                                                },
+                                                "/*"
+                                            ]
                                         ]
                                     }
                                 }
@@ -597,7 +595,7 @@
         "ConfigurationRecorderSanitiser": {
             "Type": "AWS::Serverless::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/7693571a984dafa399712805fefc01aa",
+                "CodeUri": "s3://nstone-trumpet-test-eu-1/1ce516ec5de0a5f8b576dbcb95e9e91b",
                 "Handler": "index.handler",
                 "Runtime": "nodejs6.10",
                 "Timeout": 300,
@@ -730,7 +728,7 @@
         "CloudTrailSanitiser": {
             "Type": "AWS::Serverless::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/6b044691237711b2076a69d6b5cbfb70",
+                "CodeUri": "s3://nstone-trumpet-test-eu-1/9526b2d7ac5a6024bd4db2ad5dd4a71d",
                 "Handler": "index.handler",
                 "Runtime": "nodejs6.10",
                 "Timeout": 300,

@@ -50,62 +50,32 @@ exports.handler = function(event, context, callback) {
                                 });
                                 new_trail = false;
                                 return false;
-                            } else {
-                                console.log("Trail is not usable, global service API call monitoring needs to be turned on in us-east-1");
-                                console.log("Creating a new trail");
-
-                                var createParams = {
-                                    Name: event.ResourceProperties.CloudTrailName,
-                                    S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
-                                    IncludeGlobalServiceEvents: true,
-                                    IsMultiRegionTrail: false
-                                };
-                                cloudtrail.createTrail(createParams, function(err, data) {
-                                    if (err) {
-                                        console.log(err);
-                                        response.send(event, context, response.FAILED, {
-                                            'Status': 'FAILED'
-                                        });
-                                        return false;
-                                    } else {
-                                        console.log(data);
-                                        // Trail created, start trail and return to CFN
-                                        var params = {
-                                            Name: data.Name
-                                        };
-                                        cloudtrail.startLogging(params, function(err, data) {
-                                            if (err) {
-                                                console.log(err, err.stack);
-                                                response.send(event, context, response.FAILED, {
-                                                    'Status': 'FAILED'
-                                                });
-                                                return false;
-                                            }
-                                            else {
-                                                console.log(data);
-                                                response.send(event, context, response.SUCCESS, {
-                                                    'Status': 'SUCCESS',
-                                                    'FinalS3BucketCloudTrail': event.ResourceProperties.S3BucketCloudTrail,
-                                                    'FinalS3BucketCloudTrailArn': event.ResourceProperties.S3BucketCloudTrailArn
-                                                });
-                                                return false;
-                                            }
-                                        });
-                                    }
-                                });
                             }
                         }
                     }
                 });
                 if (new_trail) {
-                     console.log("No valid trails exist in this region. Creating a new trail")
-                    var createParams = {
-                        Name: event.ResourceProperties.CloudTrailName,
-                        S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
-                        IncludeGlobalServiceEvents: false,
-                        IsMultiRegionTrail: false
-                    };
-                    cloudtrail.createTrail(createParams, function(err, data) {
+                    console.log('No valid trails exist in this region. Creating a new trail');
+                    console.log('Checking if we are in us-east-1. If so, we will turn on global service API call monitoring. IncludeGlobalServiceEvents set to true.');
+                    var createParamsTrailsExist = {};
+                    if (current_region == "us-east-1") {
+                        console.log('Region is us-east-1. IncludeGlobalServiceEvents set to true.');
+                        createParamsTrailsExist = {
+                            Name: event.ResourceProperties.CloudTrailName,
+                            S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
+                            IncludeGlobalServiceEvents: true,
+                            IsMultiRegionTrail: false
+                        };
+                    } else {
+                        console.log('Region is not us-east-1. IncludeGlobalServiceEvents set to false.');
+                        createParamsTrailsExist = {
+                            Name: event.ResourceProperties.CloudTrailName,
+                            S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
+                            IncludeGlobalServiceEvents: false,
+                            IsMultiRegionTrail: false
+                        };
+                    }
+                    cloudtrail.createTrail(createParamsTrailsExist, function(err, data) {
                         if (err) {
                             console.log(err);
                             response.send(event, context, response.FAILED, {
@@ -141,14 +111,27 @@ exports.handler = function(event, context, callback) {
             } else {
                 // No trails exist in this region
                 console.log("No trails exist in this region. Creating a new trail");
+                console.log('Checking if we are in us-east-1. If so, we will turn on global service API call monitoring.');
 
-                var createParams = {
-                    Name: event.ResourceProperties.CloudTrailName,
-                    S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
-                    IncludeGlobalServiceEvents: false,
-                    IsMultiRegionTrail: false
-                };
-                cloudtrail.createTrail(createParams, function(err, data) {
+                var createParamsNoTrails = {};
+                if (current_region == "us-east-1") {
+                    console.log('Region is us-east-1. IncludeGlobalServiceEvents set to true.');
+                    createParamsNoTrails = {
+                        Name: event.ResourceProperties.CloudTrailName,
+                        S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
+                        IncludeGlobalServiceEvents: true,
+                        IsMultiRegionTrail: false
+                    };
+                } else {
+                    console.log('Region is not us-east-1. IncludeGlobalServiceEvents set to false.');
+                    createParamsNoTrails = {
+                        Name: event.ResourceProperties.CloudTrailName,
+                        S3BucketName: event.ResourceProperties.S3BucketCloudTrail,
+                        IncludeGlobalServiceEvents: false,
+                        IsMultiRegionTrail: false
+                    };
+                }
+                cloudtrail.createTrail(createParamsNoTrails, function(err, data) {
                     if (err) {
                         console.log(err);
                         response.send(event, context, response.FAILED, {

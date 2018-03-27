@@ -1,5 +1,5 @@
 {
-  "name": "logger",
+  "name": "cloudtrail_discovery",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

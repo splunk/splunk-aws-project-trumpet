@@ -2,8 +2,9 @@
 var AWS = require('aws-sdk');
 var response = require('cfn-response');
 var configservice = new AWS.ConfigService();
-exports.handler = function(event, context, callback) {
+var current_region = process.env.AWS_REGION;
 
+exports.handler = function(event, context, callback) {
     console.log('Checking if a configuration recorder exists');
     configservice.describeConfigurationRecorders(null, function(err, data) {
         if (err) {
@@ -105,18 +106,37 @@ exports.handler = function(event, context, callback) {
                                     });
                                 } else {
                                     console.log(data);
-                                    var crParams = {
-                                        ConfigurationRecorder: {
-                                            name: event.ResourceProperties.ConfigRecorderName,
-                                            recordingGroup: {
-                                                allSupported: true,
-                                                includeGlobalResourceTypes: true
-                                            },
-                                            roleARN: event.ResourceProperties.RecorderRoleArn
-                                        }
-                                    };
+                                    var crParamsDeletedRecorder = {};
+                                    console.log('Checking to see if if we are in us-east-1. If so, we will include global resources.');
+
+                                    if (current_region == "us-east-1") {
+                                        console.log('We are in us-east-1. Setting includeGlobalResouceTypes to true.');
+                                        crParamsDeletedRecorder = {
+                                            ConfigurationRecorder: {
+                                                name: event.ResourceProperties.ConfigRecorderName,
+                                                recordingGroup: {
+                                                    allSupported: true,
+                                                    includeGlobalResourceTypes: true
+                                                },
+                                                roleARN: event.ResourceProperties.RecorderRoleArn
+                                            }
+                                        };
+                                    } else {
+                                        console.log('We are not in us-east-1. Setting includeGlobalResouceTypes to false.');
+                                        crParamsDeletedRecorder = {
+                                            ConfigurationRecorder: {
+                                                name: event.ResourceProperties.ConfigRecorderName,
+                                                recordingGroup: {
+                                                    allSupported: true,
+                                                    includeGlobalResourceTypes: false
+                                                },
+                                                roleARN: event.ResourceProperties.RecorderRoleArn
+                                            }
+                                        };
+                                    }
+
                                     console.log('Creating new configuration recorder');
-                                    configservice.putConfigurationRecorder(crParams, function(err, data) {
+                                    configservice.putConfigurationRecorder(crParamsDeletedRecorder, function(err, data) {
                                         if (err) {
                                             console.log(err, err.stack);
                                             response.send(event, context, response.FAILED, {
@@ -189,17 +209,36 @@ exports.handler = function(event, context, callback) {
                                     });
                                 } else {
                                     console.log(data);
-                                    var crParams = {
-                                        ConfigurationRecorder: {
-                                            name: event.ResourceProperties.ConfigRecorderName,
-                                            recordingGroup: {
-                                                allSupported: true,
-                                                includeGlobalResourceTypes: true
-                                            },
-                                            roleARN: event.ResourceProperties.RecorderRoleArn
-                                        }
-                                    };
-                                    configservice.putConfigurationRecorder(crParams, function (err, data) {
+                                    var crParamsNewRecorder = {};
+                                    console.log('Checking to see if if we are in us-east-1. If so, we will include global resources. includeGlobalResourceTypes set to true.');
+
+                                    if (current_region == "us-east-1") {
+                                        console.log('We are in us-east-1. Setting includeGlobalResouceTypes to true.');
+                                        crParamsNewRecorder = {
+                                            ConfigurationRecorder: {
+                                                name: event.ResourceProperties.ConfigRecorderName,
+                                                recordingGroup: {
+                                                    allSupported: true,
+                                                    includeGlobalResourceTypes: true
+                                                },
+                                                roleARN: event.ResourceProperties.RecorderRoleArn
+                                            }
+                                        };
+                                    } else {
+                                        console.log('We are not in us-east-1. Setting includeGlobalResouceTypes to false.');
+                                        crParamsNewRecorder = {
+                                            ConfigurationRecorder: {
+                                                name: event.ResourceProperties.ConfigRecorderName,
+                                                recordingGroup: {
+                                                    allSupported: true,
+                                                    includeGlobalResourceTypes: false
+                                                },
+                                                roleARN: event.ResourceProperties.RecorderRoleArn
+                                            }
+                                        };
+                                    }
+
+                                    configservice.putConfigurationRecorder(crParamsNewRecorder, function (err, data) {
                                         if (err) {
                                             console.log(err, err.stack);
                                             response.send(event, context, response.FAILED, {
