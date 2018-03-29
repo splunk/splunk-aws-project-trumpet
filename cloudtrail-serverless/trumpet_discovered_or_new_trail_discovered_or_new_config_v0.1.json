@@ -1,7 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Serverless application for CloudTrail data ingest into Splunk through a basic logger",
-  "Transform": "AWS::Serverless-2016-10-31",
   "Parameters": {
     "SplunkHttpEventCollectorURL": {
       "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - https://server:port/services/collector)",
@@ -149,9 +148,9 @@
       }
     },
     "BackingLambdaCloudTrailLogProcessor": {
-      "Type": "AWS::Serverless::Function",
+      "Type": "AWS::Lambda::Function",
       "Properties": {
-        "CodeUri": "lambda_code/logger",
+        "Code": "lambda_code/cloudtrail_logger",
         "Description": "Stream events from an AWS S3 bucket being updated by AWS CloudTrail to Splunk using HTTP event collector",
         "Handler": "index.handler",
         "MemorySize": 512,
@@ -442,9 +441,9 @@
       }
     },
     "BackingLambdaConfigLogProcessor": {
-      "Type": "AWS::Serverless::Function",
+      "Type": "AWS::Lambda::Function",
       "Properties": {
-        "CodeUri": "lambda_code/logger",
+        "Code": "lambda_code/config_logger",
         "Description": "Stream events from an AWS S3 bucket being updated by AWS config to Splunk using HTTP event collector",
         "Handler": "index.handler",
         "MemorySize": 512,
@@ -593,9 +592,9 @@
       }
     },
     "ConfigurationRecorderSanitiser": {
-      "Type": "AWS::Serverless::Function",
+      "Type": "AWS::Lambda::Function",
       "Properties": {
-        "CodeUri": "lambda_code/config_discovery",
+        "Code": "lambda_code/config_discovery",
         "Handler": "index.handler",
         "Runtime": "nodejs6.10",
         "Timeout": 300,
@@ -709,9 +708,9 @@
       }
     },
     "CloudTrailSanitiser": {
-      "Type": "AWS::Serverless::Function",
+      "Type": "AWS::Lambda::Function",
       "Properties": {
-        "CodeUri": "lambda_code/cloudtrail_discovery",
+        "Code": "lambda_code/cloudtrail_discovery",
         "Handler": "index.handler",
         "Runtime": "nodejs6.10",
         "Timeout": 300,

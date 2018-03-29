@@ -74,6 +74,9 @@ exports.handler = function(event, context, callback) {
                                         configservice.startConfigurationRecorder(params, function(err, data) {
                                             if (err) {
                                                 console.log(err, err.stack);
+                                                response.send(event, context, response.FAILED, {
+                                                    'Status': 'NEW'
+                                                });
                                             } else {
                                                 console.log(data);
                                                 response.send(event, context, response.SUCCESS, {
@@ -169,6 +172,9 @@ exports.handler = function(event, context, callback) {
                                                     configservice.startConfigurationRecorder(params, function(err, data) {
                                                         if (err) {
                                                             console.log(err, err.stack);
+                                                            response.send(event, context, response.FAILED, {
+                                                                'Status': 'NEW'
+                                                            });
                                                         } else {
                                                             console.log(data);
                                                             response.send(event, context, response.SUCCESS, {
@@ -194,6 +200,9 @@ exports.handler = function(event, context, callback) {
                 configservice.describeDeliveryChannels(null, function(err, data) {
                     if (err) {
                         console.log(err, err.stack);
+                        response.send(event, context, response.FAILED, {
+                            'Status': 'NEW'
+                        });
                     } else {
                         console.log(data);
                         if (data.DeliveryChannels.length > 0) {
@@ -269,6 +278,9 @@ exports.handler = function(event, context, callback) {
                                                     configservice.startConfigurationRecorder(params, function (err, data) {
                                                         if (err) {
                                                             console.log(err, err.stack);
+                                                            response.send(event, context, response.FAILED, {
+                                                                'Status': 'NEW'
+                                                            });
                                                         } else {
                                                             console.log(data);
                                                             response.send(event, context, response.SUCCESS, {
@@ -327,6 +339,9 @@ exports.handler = function(event, context, callback) {
                                             configservice.startConfigurationRecorder(params, function(err, data) {
                                                 if (err) {
                                                     console.log(err, err.stack);
+                                                    response.send(event, context, response.FAILED, {
+                                                        'Status': 'NEW'
+                                                    });
                                                 } else {
                                                     console.log(data);
                                                     response.send(event, context, response.SUCCESS, {

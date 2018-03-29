@@ -1,7 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "Serverless application for CloudTrail data ingest into Splunk through a basic logger",
-    "Transform": "AWS::Serverless-2016-10-31",
     "Parameters": {
         "SplunkHttpEventCollectorURL": {
             "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - https://server:port/services/collector)",
@@ -149,9 +148,12 @@
             }
         },
         "BackingLambdaCloudTrailLogProcessor": {
-            "Type": "AWS::Serverless::Function",
+            "Type": "AWS::Lambda::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/c188c6f617d99302976f756002b1a921",
+                "Code": {
+                    "S3Bucket": "nstone-trumpet-test-eu-1",
+                    "S3Key": "c188c6f617d99302976f756002b1a921"
+                },
                 "Description": "Stream events from an AWS S3 bucket being updated by AWS CloudTrail to Splunk using HTTP event collector",
                 "Handler": "index.handler",
                 "MemorySize": 512,
@@ -442,9 +444,12 @@
             }
         },
         "BackingLambdaConfigLogProcessor": {
-            "Type": "AWS::Serverless::Function",
+            "Type": "AWS::Lambda::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/c188c6f617d99302976f756002b1a921",
+                "Code": {
+                    "S3Bucket": "nstone-trumpet-test-eu-1",
+                    "S3Key": "4ae5b1dd66466ce29495f0f01880a672"
+                },
                 "Description": "Stream events from an AWS S3 bucket being updated by AWS config to Splunk using HTTP event collector",
                 "Handler": "index.handler",
                 "MemorySize": 512,
@@ -593,9 +598,12 @@
             }
         },
         "ConfigurationRecorderSanitiser": {
-            "Type": "AWS::Serverless::Function",
+            "Type": "AWS::Lambda::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/1ce516ec5de0a5f8b576dbcb95e9e91b",
+                "Code": {
+                    "S3Bucket": "nstone-trumpet-test-eu-1",
+                    "S3Key": "1ce516ec5de0a5f8b576dbcb95e9e91b"
+                },
                 "Handler": "index.handler",
                 "Runtime": "nodejs6.10",
                 "Timeout": 300,
@@ -726,9 +734,12 @@
             }
         },
         "CloudTrailSanitiser": {
-            "Type": "AWS::Serverless::Function",
+            "Type": "AWS::Lambda::Function",
             "Properties": {
-                "CodeUri": "s3://nstone-trumpet-test-eu-1/9526b2d7ac5a6024bd4db2ad5dd4a71d",
+                "Code": {
+                    "S3Bucket": "nstone-trumpet-test-eu-1",
+                    "S3Key": "9526b2d7ac5a6024bd4db2ad5dd4a71d"
+                },
                 "Handler": "index.handler",
                 "Runtime": "nodejs6.10",
                 "Timeout": 300,
