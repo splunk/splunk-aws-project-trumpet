@@ -83,7 +83,7 @@ exports.handler = (event, context, callback) => {
                                         message: event,
                                         metadata: {
                                             time: new Date(time).getTime() / 1000,
-                                            host: 'aws',
+                                            host: 'aws_config',
                                             source: `s3://${bucket}/${key}`,
                                         },
                                     });

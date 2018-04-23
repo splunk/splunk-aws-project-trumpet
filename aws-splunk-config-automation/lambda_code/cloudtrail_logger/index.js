@@ -83,7 +83,7 @@ exports.handler = (event, context, callback) => {
                                         message: event,
                                         metadata: {
                                             time: new Date(time).getTime() / 1000,
-                                            host: 'serverless',
+                                            host: 'aws_cloudtrail',
                                             source: `s3://${bucket}/${key}`,
                                         },
                                     });
