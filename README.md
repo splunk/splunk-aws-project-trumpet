@@ -23,61 +23,34 @@ http://docs.splunk.com/Documentation/AddOns/released/AWS/ConfigureInputs   \
 https://splunk.app.box.com/s/4df4teepihis83p8493eybeb8l0dbl10   \
 https://confluence.splunk.com/display/~kamir/Splunk+Cloud+%3A+Project+Awesome-o   
 
-## Configure HEC 
-* **requires conformation to be turned on**
-* **do not configure SSL on HEC**
-	* store key
-* Configure ALB for HEC 
- * require SSL offload
-
- ## HF EC2 role 
- * create EC2 role for HF
- * Broad list/read rights to test for each GDI control
- 	* this will end up being one of the most iteratively changed object as new data feeds will be created all the time
-
- ## S3 Worker Lambda role
- * lambda execution role
- 	* SNS read/list
- 	* S3 read/list/write
-
-  ## 
-
-
-
-## CloudTrail
-* Test for access to API's to read cloudtrail info
-	* test each region for a trail that has SNS configured
-	* Offer to configure missing regions
-* depploy lambda function in each reagion
-* create overflow S3 bucket for each region
-* configure bucket for security - 
-	* cofigure lambda with HEC
-
+# How to use
 
 # Package CloudFormation template:
 
-Update the { BucketName } with an existing bucket in us-west-1 (only has 4 trails up currently)
+Update the { BucketName } with an existing bucket in the region you wish to deploy in
 
+Use the AWS CloudFormation console, or the following cli command
 ```
-aws cloudformation package --template trumpet_new_v0.1.json --s3-bucket { BucketName } --output-template-file template.output.json --use-json
+aws cloudformation package --template trumpet_discovered_or_new_trail_discovered_or_new_config_v0.1.json --s3-bucket { BucketName } --output-template-file template.output.json --use-json
 ```
 # Deploy CloudFormation template:
 
 Update the { StackName } with the name of the stack
 
+Use the AWS CloudFormation console, or the following cli command
 ```
-aws cloudformation deploy --template-file template.output.json --stack-name { StackName } --parameter-overrides CloudTrailName=TrumpetTrail SplunkHttpEventCollectorURL=https://54.202.136.110:8088/services/collector SplunkHttpEventCollectorToken=3c0c3b40-0940-4e29-8557-826f9cea1575 --capabilities CAPABILITY_IAM
+aws cloudformation deploy --template-file template.output.json --stack-name { StackName } --parameter-overrides CloudTrailName=TrumpetTrail SplunkHttpEventCollectorURL=https://{{ Splunk server }}:8088/services/collector CloudTrailName={{ Custom name of CloudTrail that will be created if a valid one does not exist}} CloudTrailSplunkHttpEventCollectorToken={{ CloudTrail HEC token }} ConfigSplunkHttpEventCollectorToken={{ Config HEC token }} --capabilities CAPABILITY_IAM
 ```
-# Open Splunk and view lambda output
+# Open Splunk and view Config and CloudTrail output
 
-##### Splunk server: http://54.202.136.110:8000/en-US/app/search/search
+##### Splunk server
 
-user: admin
-
-pw: Splunkr3k0g1t!
+Ask Nic Stone for access. Or spin up/use your own and add two new HEC tokens
 
 ##### Search (shows all messages inbound from Lambda):
 
-(Search All time)
+(Search last 1hr - can take up 5 mins for cloudtrail to come in and 1hr for config to come in after launching template)
 
 index="main" sourcetype="aws:cloudtrail"
+
+If Splunk App for AWS is installed, check topology map and various other dashboards to see live populated visualizations and KPIsindex="main" sourcetype="aws:cloudtrail"
