@@ -1,0 +1,161 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for AWS Metrics data ingest into Splunk",
+  "Parameters": {
+    "SplunkHttpEventCollectorURL": {
+      "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive AWS data. (format - https://server:port/services/collector)",
+      "Type": "String"
+    },
+    "CloudWatchSplunkHttpEventCollectorToken": {
+      "Description": "The enabled HEC token on the Splunk environment for the aws:cloudwatch sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+      "Type": "String"
+    }
+  },
+  "Resources" : {
+    "TrumpetDynamoDBTable" : {
+      "Type" : "AWS::DynamoDB::Table",
+      "Properties" : {
+        "AttributeDefinitions" : [
+          {
+            "AttributeName" : "metric_dimension",
+            "AttributeType" : "S"
+          }
+        ],
+        "KeySchema" : [
+          {
+            "AttributeName" : "metric_dimension",
+            "KeyType" : "HASH"
+          }
+        ],
+        "ProvisionedThroughput" : {
+          "ReadCapacityUnits" : "100",
+          "WriteCapacityUnits" : "100"
+        },
+        "TableName" : "splunk_metrics_highwater"
+      }
+    },
+    "BackingLambdaCloudWatchMetricsProcessor": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": "lambda_code/splunk_metrics_poller",
+        "Description": "Send CloudWatch Metrics to Splunk using HTTP event collector",
+        "Handler": "index.handler",
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "BackingLambdaExecutionRoleCloudWatchMetricsProcessor",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs6.10",
+        "Timeout": 300,
+        "Environment": {
+          "Variables": {
+            "SPLUNK_HEC_URL": {
+              "Ref": "SplunkHttpEventCollectorURL"
+            },
+            "SPLUNK_HEC_TOKEN": {
+              "Ref": "CloudWatchSplunkHttpEventCollectorToken"
+            }
+          }
+        }
+      }
+    },
+    "BackingLambdaExecutionRoleCloudWatchMetricsProcessor": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "BackingLambdaExecutionCloudWatchMetricsPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:*:*:*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:UpdateFunctionConfiguration"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudwatch:GetMetricStatistics",
+                    "cloudwatch:ListMetrics"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Path": "/"
+      }
+    },
+    "EventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "EventRule",
+        "ScheduleExpression": "rate(5 minutes)",
+        "State": "ENABLED",
+        "Targets": [{
+          "Arn": { "Fn::GetAtt": ["BackingLambdaCloudWatchMetricsProcessor", "Arn"] },
+          "Id": "TargetFunctionMetricsPoller"
+        }]
+      }
+    },
+    "PermissionForEventsToInvokeLambda": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Ref": "BackingLambdaCloudWatchMetricsProcessor" },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": { "Fn::GetAtt": ["EventRule", "Arn"] }
+      }
+    }
+  }
+}

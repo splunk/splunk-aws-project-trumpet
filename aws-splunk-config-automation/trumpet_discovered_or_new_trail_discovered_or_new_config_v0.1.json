@@ -1,9 +1,9 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Template for CloudTrail data ingest into Splunk using an HTTP Event Collector logger",
+  "Description": "Template for AWS data ingest into Splunk using an HTTP Event Collector logger",
   "Parameters": {
     "SplunkHttpEventCollectorURL": {
-      "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive updates on the status of the action as it completes. (format - https://server:port/services/collector)",
+      "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive AWS data. (format - https://server:port/services/collector)",
       "Type": "String"
     },
     "CloudTrailSplunkHttpEventCollectorToken": {

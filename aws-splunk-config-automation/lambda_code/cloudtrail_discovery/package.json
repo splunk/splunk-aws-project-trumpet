@@ -12,6 +12,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "install": "find ./node_modules/* -mtime +10950 -exec touch {} \\;"
   },
-  "author": "",
+  "author": "Nic Stone",
   "license": "MIT"
 }

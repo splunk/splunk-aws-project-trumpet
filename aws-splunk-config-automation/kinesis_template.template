@@ -1,0 +1,173 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for AWS data ingest into Splunk using firehose",
+  "Parameters": {
+    "SplunkHttpEventCollectorURL": {
+      "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive AWS data. (format - https://server:port/services/collector)",
+      "Type": "String"
+    },
+    "CloudTrailSplunkHttpEventCollectorToken": {
+      "Description": "The enabled HEC token on the Splunk environment for the CloudTrail sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+      "Type": "String"
+    },
+    "ConfigSplunkHttpEventCollectorToken": {
+      "Description": "The enabled HEC token on the Splunk environment for the Config sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
+      "Type": "String"
+    },
+    "CloudTrailName": {
+      "Description": "The name of the new CloudTrail trail that will be generated and sent to Splunk once this template is deployed.",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "deliverystream": {
+      "DependsOn": ["deliveryPolicy"],
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "Properties": {
+        "DeliveryStreamType": "DirectPut",
+        "SplunkDestinationConfiguration": {
+          "HECEndpoint": {
+              "Ref": "SplunkHttpEventCollectorURL"
+            },
+          "HECEndpointType": "Event",
+          "HECToken": {
+              "Ref": "ConfigSplunkHttpEventCollectorToken"
+            },
+          "HECAcknowledgmentTimeoutInSeconds": 180,
+          "RetryOptions": {
+            "DurationInSeconds": 300
+          },
+          "S3BackupMode": "FailedEventsOnly",
+          "S3Configuration": {
+            "RoleARN": { "Fn::GetAtt" : ["deliveryRole", "Arn"] },
+            "BucketARN": { "Ref" : "s3bucket" },
+            "Prefix": "firehose/",
+            "BufferingHints": {
+              "SizeInMBs": 60,
+              "IntervalInSeconds": 50
+            },
+            "CompressionFormat": "UNCOMPRESSED",
+            "EncryptionConfiguration": {
+              "NoEncryptionConfig": "NoEncryption"
+            },
+            "CloudWatchLoggingOptions": {
+              "Enabled": false
+            }
+          },
+          "ProcessingConfiguration": {
+            "Enabled": false
+          },
+          "CloudWatchLoggingOptions": {
+            "Enabled": false
+          }
+        }
+      }
+    },
+    "s3bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "deliveryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "firehose.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "sts:ExternalId": {"Ref":"AWS::AccountId"}
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "deliveryPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "firehose_delivery_policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:AbortMultipartUpload",
+                "s3:GetBucketLocation",
+                "s3:GetObject",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:PutObject"
+              ],
+              "Resource": [
+                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref":"s3bucket"}]]},
+                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref":"s3bucket"}, "*"]]}
+              ]
+            }
+          ]
+        },
+        "Roles": [{"Ref": "deliveryRole"}]
+      }
+    },
+    "EventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Description": "EventRule",
+        "EventPattern": {
+          "source": [
+            "aws.config"
+          ]
+        },
+        "State": "ENABLED",
+        "RoleArn": {
+            "Fn::GetAtt": [
+                "EventsInvokeKinesisTargetRole",
+                "Arn"
+            ]
+        },
+        "Targets": [
+            {
+                "Arn": {
+                    "Fn::GetAtt": [
+                        "MyFirstStream",
+                        "Arn"
+                    ]
+                },
+                "Id": "Id123",
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "EventsInvokeKinesisTargetRole",
+                        "Arn"
+                    ]
+                },
+                "KinesisParameters": {
+                    "PartitionKeyPath": "$"
+                }
+            }
+        ]
+
+      }
+    },
+    "PermissionForEventsToInvokeLambda": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Ref": "LambdaFunction" },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": { "Fn::GetAtt": ["EventRule", "Arn"] }
+      }
+    }
+  }
+}

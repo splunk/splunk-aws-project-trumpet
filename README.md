@@ -38,6 +38,7 @@ aws cloudformation package --template trumpet_discovered_or_new_trail_discovered
 Update the { StackName } with the name of the stack
 
 Use the AWS CloudFormation console, or the following cli command
+aws cloudformation deploy --template-file /Users/nstone/Desktop/trumpet_git/aws-project-trumpet/aws-splunk-config-automation/template.output.json --stack-name firehose_test --parameter-overrides SplunkHttpEventCollectorURL=https://35.164.180.39:8088/services/collector CloudTrailSplunkHttpEventCollectorToken=2ec0e288-4749-47fd-94ed-234c61ba357d ConfigSplunkHttpEventCollectorToken=2ec0e288-4749-47fd-94ed-234c61ba357d --capabilities CAPABILITY_IAM
 ```
 aws cloudformation deploy --template-file template.output.json --stack-name { StackName } --parameter-overrides CloudTrailName=TrumpetTrail SplunkHttpEventCollectorURL=https://{{ Splunk server }}:8088/services/collector CloudTrailName={{ Custom name of CloudTrail that will be created if a valid one does not exist}} CloudTrailSplunkHttpEventCollectorToken={{ CloudTrail HEC token }} ConfigSplunkHttpEventCollectorToken={{ Config HEC token }} --capabilities CAPABILITY_IAM
 ```
