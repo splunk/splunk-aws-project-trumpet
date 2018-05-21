@@ -1,28 +1,6 @@
 $(document).ready(function () {
-  //your code here
   var template;
   var items;
-
-	function make_list() {
-
-	    // var list = $(".Jsonlist");
-	    // list.empty();
-
-	    // if (items.length > 0) {
-		//     var li = $('<li>');
-		//     li.html(template.toString());
-		//     list.append(li);
-		// }
-
-	    // for (var i in items) {
-	    //     var value = i + items[i];
-	    //     var li = $('<li>');
-	    //     li.html(value);
-	    //     list.append(li);
-	    // }
-
-	    //console.log(template);
-	};
 
 	function save_to_local_json() {
 	    var items_json = JSON.stringify(items);
@@ -72,7 +50,6 @@ $(document).ready(function () {
 	    var text = $('#HEC_endpoint').val();
 	    alert(text);
 	    items["HEC_endpoint"] = text;
-	    //make_list();
 	    save_to_local_json();
 	});
 

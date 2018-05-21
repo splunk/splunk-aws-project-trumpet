@@ -415,7 +415,7 @@
             "Properties": { \
                 "Code": { \
                     "ZipFile": { \
-                        "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n" \
+                        "Fn::Sub": "var response = require(\'cfn-response\');\\nvar AWS = require(\'aws-sdk\');\\nvar s3 = new AWS.S3();\\nexports.handler = function(event, context) {\\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\\n  var params = event.ResourceProperties;\\n  delete params.ServiceToken;\\n  if (event.RequestType === \'Delete\') {\\n    params.NotificationConfiguration = {};\\n    s3.putBucketNotificationConfiguration(params).promise()\\n      .then((data)=>respond())\\n      .catch((e)=>respond());\\n  } else {\\n    s3.putBucketNotificationConfiguration(params).promise()\\n      .then((data)=>respond())\\n      .catch((e)=>respond(e));\\n  }\\n};\\n" \
                     } \
                 },  \
                 "Description": "S3 Object Custom Resource",  \
@@ -617,7 +617,7 @@
             "Properties": { \
                 "Code": { \
                     "ZipFile": { \
-                        "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n" \
+                        "Fn::Sub": "var response = require(\'cfn-response\');\\nvar AWS = require(\'aws-sdk\');\\nvar s3 = new AWS.S3();\\nexports.handler = function(event, context) {\\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\\n  var params = event.ResourceProperties;\\n  delete params.ServiceToken;\\n  if (event.RequestType === \'Delete\') {\\n    params.NotificationConfiguration = {};\\n    s3.putBucketNotificationConfiguration(params).promise()\\n      .then((data)=>respond())\\n      .catch((e)=>respond());\\n  } else {\\n    s3.putBucketNotificationConfiguration(params).promise()\\n      .then((data)=>respond())\\n      .catch((e)=>respond(e));\\n  }\\n};\\n" \
                     } \
                 },  \
                 "Description": "S3 Object Custom Resource",  \

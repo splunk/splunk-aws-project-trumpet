@@ -6,64 +6,13 @@
       "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive AWS data. (format - https://server:port/services/collector)",
       "Type": "String"
     },
-    "CloudTrailSplunkHttpEventCollectorToken": {
-      "Description": "The enabled HEC token on the Splunk environment for the CloudTrail sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
-      "Type": "String"
-    },
     "ConfigSplunkHttpEventCollectorToken": {
       "Description": "The enabled HEC token on the Splunk environment for the Config sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)",
-      "Type": "String"
-    },
-    "CloudTrailName": {
-      "Description": "The name of the new CloudTrail trail that will be generated and sent to Splunk once this template is deployed.",
       "Type": "String"
     }
   },
   "Resources": {
-    "deliverystream": {
-      "DependsOn": ["deliveryPolicy"],
-      "Type": "AWS::KinesisFirehose::DeliveryStream",
-      "Properties": {
-        "DeliveryStreamType": "DirectPut",
-        "SplunkDestinationConfiguration": {
-          "HECEndpoint": {
-              "Ref": "SplunkHttpEventCollectorURL"
-            },
-          "HECEndpointType": "Event",
-          "HECToken": {
-              "Ref": "ConfigSplunkHttpEventCollectorToken"
-            },
-          "HECAcknowledgmentTimeoutInSeconds": 180,
-          "RetryOptions": {
-            "DurationInSeconds": 300
-          },
-          "S3BackupMode": "FailedEventsOnly",
-          "S3Configuration": {
-            "RoleARN": { "Fn::GetAtt" : ["deliveryRole", "Arn"] },
-            "BucketARN": { "Ref" : "s3bucket" },
-            "Prefix": "firehose/",
-            "BufferingHints": {
-              "SizeInMBs": 60,
-              "IntervalInSeconds": 50
-            },
-            "CompressionFormat": "UNCOMPRESSED",
-            "EncryptionConfiguration": {
-              "NoEncryptionConfig": "NoEncryption"
-            },
-            "CloudWatchLoggingOptions": {
-              "Enabled": false
-            }
-          },
-          "ProcessingConfiguration": {
-            "Enabled": false
-          },
-          "CloudWatchLoggingOptions": {
-            "Enabled": false
-          }
-        }
-      }
-    },
-    "s3bucket": {
+    "S3Bucket": {
       "Type": "AWS::S3::Bucket",
       "Properties": {
         "VersioningConfiguration": {
@@ -112,8 +61,8 @@
                 "s3:PutObject"
               ],
               "Resource": [
-                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref":"s3bucket"}]]},
-                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref":"s3bucket"}, "*"]]}
+                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref":"S3Bucket"}]]},
+                {"Fn::Join": ["", ["arn:aws:s3:::", {"Ref":"S3Bucket"}, "*"]]}
               ]
             }
           ]
@@ -145,7 +94,6 @@
                         "Arn"
                     ]
                 },
-                "Id": "Id123",
                 "RoleArn": {
                     "Fn::GetAtt": [
                         "EventsInvokeKinesisTargetRole",
@@ -160,13 +108,90 @@
 
       }
     },
-    "PermissionForEventsToInvokeLambda": {
-      "Type": "AWS::Lambda::Permission",
+    "CustomFunction": {
+      "Type": "AWS::Lambda::Function",
       "Properties": {
-        "FunctionName": { "Ref": "LambdaFunction" },
-        "Action": "lambda:InvokeFunction",
-        "Principal": "events.amazonaws.com",
-        "SourceArn": { "Fn::GetAtt": ["EventRule", "Arn"] }
+        "Code": "lambda_code/firehose_setup/index",
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt" : ["LambdaExecutionRole", "Arn"] },
+        "Runtime": "python2.7",
+        "Timeout": "30"
+      }
+    },
+    "LambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": ["lambda.amazonaws.com"]},
+            "Action": ["sts:AssumeRole"]
+          }]
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "root",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:aws:logs:*:*:*:*"
+            },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:PutObject",
+                  "s3:DeleteObject",
+                  "s3:DeleteBucket"
+                ],
+                "Resource": "*"
+              }]
+          }
+        }]
+      }
+    },
+    "CustomResource": {
+      "Type": "Custom::CustomResource",
+      "Properties": {
+        "ServiceToken": { "Fn::GetAtt" : ["CustomFunction", "Arn"] },
+        "S3Bucket": { "Ref": "S3Bucket" }
+      }
+    },
+    "BucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Id": "MyPolicy",
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:s3:::",
+                    {
+                      "Ref": "S3Bucket"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          ]
+        },
+        "Bucket": {
+          "Ref": "S3Bucket"
+        }
       }
     }
   }

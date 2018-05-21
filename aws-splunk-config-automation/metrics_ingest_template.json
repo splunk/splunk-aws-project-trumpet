@@ -140,7 +140,7 @@
       "Type": "AWS::Events::Rule",
       "Properties": {
         "Description": "EventRule",
-        "ScheduleExpression": "rate(5 minutes)",
+        "ScheduleExpression": "cron(4,9,14,19,24,29,34,39,44,49,54,59 * * * ? *)",
         "State": "ENABLED",
         "Targets": [{
           "Arn": { "Fn::GetAtt": ["BackingLambdaCloudWatchMetricsProcessor", "Arn"] },
