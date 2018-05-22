@@ -16,10 +16,8 @@ def handler(event, context):
     logger.info('REQUEST RECEIVED:\n {}'.format(context))
     if event['RequestType'] == 'Create':
         # Push index.html + other frontend assets to the s3 bucket created
-        s3.upload_file(basePath + '/site_source/index.html', event["ResourceProperties"]["S3Bucket"], 'index.html', ExtraArgs={'ContentType': "text/html"})
-        s3.upload_file(basePath + '/site_source/js/build_cf.js', event["ResourceProperties"]["S3Bucket"], 'js/build_cf.js', ExtraArgs={'ContentType': "text/javascript"})
-        s3.upload_file(basePath + '/site_source/style/style.css', event["ResourceProperties"]["S3Bucket"], 'style/style.css', ExtraArgs={'ContentType': "text/css"})
-        s3.upload_file(basePath + '/site_source/static/Splunk_logo.png', event["ResourceProperties"]["S3Bucket"], 'static/Splunk_logo.png')
+        s3.upload_file(basePath + '/build_source/index.html', event["ResourceProperties"]["S3Bucket"], 'index.html', ExtraArgs={'ContentType': "text/html"})
+        s3.upload_file(basePath + '/build_source/main.14ca6fd516c4af681144.js', event["ResourceProperties"]["S3Bucket"], 'main.14ca6fd516c4af681144.js', ExtraArgs={'ContentType': "text/javascript"})
         logger.info('CREATE!')
         sendResponse(event, context, "SUCCESS", { "Message": "Resource creation successful!" })
     elif event['RequestType'] == 'Delete':

@@ -141,7 +141,7 @@
                 "Handler": "index.handler", 
                 "Code": {
                     "S3Bucket": "nstone-website-test", 
-                    "S3Key": "8722ebe4dc0129a32aa1d65b0ab4a837"
+                    "S3Key": "0f858c526af6701e03aedf89e06b467a"
                 }, 
                 "Role": {
                     "Fn::GetAtt": [
