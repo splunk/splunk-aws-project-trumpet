@@ -762,7 +762,7 @@
         }]
       }
     },
-    "CustomFunction": {
+    "FirehoseDeliverySetupLambda": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": "lambda_code/firehose_delivery_setup",
@@ -788,7 +788,7 @@
     "DeliverySetupCustomResource": {
       "Type": "Custom::CustomResource",
       "Properties": {
-        "ServiceToken": { "Fn::GetAtt" : ["CustomFunction", "Arn"] },
+        "ServiceToken": { "Fn::GetAtt" : ["FirehoseDeliverySetupLambda", "Arn"] },
         "ConfigNotificationBackupS3Bucket": {"Fn::GetAtt" : ["ConfigNotificationBackupS3Bucket", "Arn"] },
         "ConfigNotificationBackupS3Role": {"Fn::GetAtt" : ["ConfigNotificationBackupS3Role", "Arn"] },
         "ConfigNotificationBackupS3BucketName": { "Ref": "ConfigNotificationBackupS3Bucket" },

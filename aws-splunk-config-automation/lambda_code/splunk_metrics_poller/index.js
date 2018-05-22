@@ -49,7 +49,7 @@ function get_metric_and_send_to_splunk(event, context, highwater, new_highwater,
         StartTime: parseInt(highwater)
     };
 
-    // TODO Batch metric requests? - Tricky because need to parse results after to find
+    // TODO pagination of metric results
     // Grab a single metric and send to Splunk
     cloudwatch.getMetricStatistics(cweParams, function(err, metric_data) {
         if (err) {
@@ -144,6 +144,7 @@ function send_to_splunk(event, context, second_time, metric_data, new_highwater,
                     console.log(err, err.stack);
                 } else {
                     var current = new Date() / 1000;
+                    // If the current time - the updated DDB value is greater than 5 minutes
                     if (current - new_highwater > periodicity_seconds) {
                         // Recurse here to update as much as possible
                         get_metric_and_send_to_splunk(event, context, new_highwater, new_highwater + periodicity_seconds, new_highwater + periodicity_seconds-1, metric_name, dimension, ddb_metric_key)

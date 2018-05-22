@@ -307,6 +307,37 @@
                 }
             }
         }, 
+        "FirehoseDeliverySetupLambda": {
+            "Type": "AWS::Lambda::Function", 
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "nstone-website-test", 
+                    "S3Key": "7b240889d4814848102c35cb45c54491"
+                }, 
+                "Environment": {
+                    "Variables": {
+                        "SPLUNK_CONFIG_NOTIFICATION_HEC_TOKEN": {
+                            "Ref": "ConfigNotificationSplunkHttpEventCollectorToken"
+                        }, 
+                        "SPLUNK_HEC_URL": {
+                            "Ref": "SplunkHttpEventCollectorURL"
+                        }, 
+                        "SPLUNK_CLOUDTRAIL_HEC_TOKEN": {
+                            "Ref": "CloudTrailSplunkHttpEventCollectorToken"
+                        }
+                    }
+                }, 
+                "Handler": "index.handler", 
+                "Role": {
+                    "Fn::GetAtt": [
+                        "kinesisFirehoseSetupRole", 
+                        "Arn"
+                    ]
+                }, 
+                "Timeout": "30", 
+                "Runtime": "python2.7"
+            }
+        }, 
         "TrumpetDynamoDBTable": {
             "Type": "AWS::DynamoDB::Table", 
             "Properties": {
@@ -452,7 +483,7 @@
             "Properties": {
                 "Code": {
                     "S3Bucket": "nstone-website-test", 
-                    "S3Key": "039cc264f5c0c0eb83b7265d1ecd742e"
+                    "S3Key": "e69be904b7626708efdb8af525dad66a"
                 }, 
                 "Description": "Send CloudWatch Metrics to Splunk using HTTP event collector", 
                 "MemorySize": 512, 
@@ -629,7 +660,7 @@
                 }, 
                 "ServiceToken": {
                     "Fn::GetAtt": [
-                        "CustomFunction", 
+                        "FirehoseDeliverySetupLambda", 
                         "Arn"
                     ]
                 }, 
@@ -881,37 +912,6 @@
                     ]
                 }, 
                 "Principal": "s3.amazonaws.com"
-            }
-        }, 
-        "CustomFunction": {
-            "Type": "AWS::Lambda::Function", 
-            "Properties": {
-                "Code": {
-                    "S3Bucket": "nstone-website-test", 
-                    "S3Key": "7b240889d4814848102c35cb45c54491"
-                }, 
-                "Environment": {
-                    "Variables": {
-                        "SPLUNK_CONFIG_NOTIFICATION_HEC_TOKEN": {
-                            "Ref": "ConfigNotificationSplunkHttpEventCollectorToken"
-                        }, 
-                        "SPLUNK_HEC_URL": {
-                            "Ref": "SplunkHttpEventCollectorURL"
-                        }, 
-                        "SPLUNK_CLOUDTRAIL_HEC_TOKEN": {
-                            "Ref": "CloudTrailSplunkHttpEventCollectorToken"
-                        }
-                    }
-                }, 
-                "Handler": "index.handler", 
-                "Role": {
-                    "Fn::GetAtt": [
-                        "kinesisFirehoseSetupRole", 
-                        "Arn"
-                    ]
-                }, 
-                "Timeout": "30", 
-                "Runtime": "python2.7"
             }
         }, 
         "ConfigRole": {
