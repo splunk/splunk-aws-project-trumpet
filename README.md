@@ -11,7 +11,10 @@ Trumpet is provided as a CloudFormation template that sets up an s3 back static 
 
 Use the AWS CloudFormation console, or the following AWS CLI command. Update `{ BucketName }` in the command with an existing bucket in the region you wish to deploy in.
 ```
-aws cloudformation package --template cf_website_builder_test/website_builder_lambda.json --s3-bucket { BucketName } --output-template-file template.output.json --use-json
+aws cloudformation package 
+    --template cf_website_builder_test/website_builder_lambda.json 
+    --s3-bucket { BucketName } --output-template-file template.output.json 
+    --use-json
 ```
 
 ### Deploy the CloudFormation template
@@ -19,7 +22,10 @@ aws cloudformation package --template cf_website_builder_test/website_builder_la
 Use the AWS CloudFormation console, or the following cli command. Update `{ StackName }` in the command with the name of the stack
 
 ```
-aws cloudformation deploy --template-file template.output.json --stack-name { StackName } --capabilities CAPABILITY_IAM
+aws cloudformation deploy 
+    --template-file template.output.json 
+    --stack-name { StackName } 
+    --capabilities CAPABILITY_IAM
 ```
 
 ### Support
