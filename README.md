@@ -1,6 +1,6 @@
 # Trumpet
 
-![Image](readme_static/config_img?raw=true)
+![Alt text](readme_static/config_img.png?raw=true)
 
 Trumpet is a dynamic CloudFormation template that sets up all the AWS infrastructure needed to send AWS CloudTrail, AWS CloudWatch Metrics, and AWS Config data to Splunk using HTTP Event Collector (HEC). Once the template has been deployed, the user only needs the AWS Add-on and App installed (or packaged in their deployed AMI, etc.) on their Splunk instance in order to populate several of the dashboards included in the Splunk App for AWS with their data.
 
