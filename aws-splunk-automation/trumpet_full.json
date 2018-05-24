@@ -869,7 +869,7 @@
             "SPLUNK_HEC_URL": {
               "Ref": "SplunkHttpEventCollectorURL"
             },
-            "SPLUNK_CLOUDTRAIL_HEC_TOKEN": {
+            "SPLUNK_HEC_TOKEN": {
               "Ref": "CloudTrailSplunkHttpEventCollectorToken"
             }
           }
@@ -899,7 +899,7 @@
             "SPLUNK_HEC_URL": {
               "Ref": "SplunkHttpEventCollectorURL"
             },
-            "SPLUNK_CONFIG_NOTIFICATION_HEC_TOKEN": {
+            "SPLUNK_HEC_TOKEN": {
               "Ref": "ConfigNotificationSplunkHttpEventCollectorToken"
             }
           }

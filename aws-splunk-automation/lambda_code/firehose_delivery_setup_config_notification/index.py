@@ -12,7 +12,7 @@ client = boto3.client('firehose')
 s3resource = boto3.resource('s3')
 # Removing /services/collector from url
 SPLUNK_HEC_URL = os.environ['SPLUNK_HEC_URL'].replace("/services/collector", "")
-SPLUNK_CLOUDTRAIL_HEC_TOKEN = os.environ['SPLUNK_CLOUDTRAIL_HEC_TOKEN']
+SPLUNK_HEC_TOKEN = os.environ['SPLUNK_HEC_TOKEN']
 
 def handler(event, context):
     logger.info('REQUEST RECEIVED:\n {}'.format(event))
@@ -25,7 +25,7 @@ def handler(event, context):
                 SplunkDestinationConfiguration={
                     'HECEndpoint': SPLUNK_HEC_URL,
                     'HECEndpointType': 'Raw',
-                    'HECToken': SPLUNK_CONFIG_NOTIFICATION_HEC_TOKEN,
+                    'HECToken': SPLUNK_HEC_TOKEN,
                     'HECAcknowledgmentTimeoutInSeconds': 180,
                     'RetryOptions': {
                         'DurationInSeconds': 300

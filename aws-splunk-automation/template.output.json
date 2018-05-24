@@ -844,15 +844,15 @@
             "Properties": {
                 "Code": {
                     "S3Bucket": "nstone-website-test", 
-                    "S3Key": "4555e75f1251b90a0f5092cdcac7fe5f"
+                    "S3Key": "82d85f17a98aa37750df926d1b94882a"
                 }, 
                 "Environment": {
                     "Variables": {
-                        "SPLUNK_CONFIG_NOTIFICATION_HEC_TOKEN": {
-                            "Ref": "ConfigNotificationSplunkHttpEventCollectorToken"
-                        }, 
                         "SPLUNK_HEC_URL": {
                             "Ref": "SplunkHttpEventCollectorURL"
+                        }, 
+                        "SPLUNK_HEC_TOKEN": {
+                            "Ref": "ConfigNotificationSplunkHttpEventCollectorToken"
                         }
                     }
                 }, 
@@ -957,14 +957,14 @@
             "Properties": {
                 "Code": {
                     "S3Bucket": "nstone-website-test", 
-                    "S3Key": "8fc3107d4bfa22c6c2045f1a906eb786"
+                    "S3Key": "5585060c93c0e5644c41ead695976e8e"
                 }, 
                 "Environment": {
                     "Variables": {
                         "SPLUNK_HEC_URL": {
                             "Ref": "SplunkHttpEventCollectorURL"
                         }, 
-                        "SPLUNK_CLOUDTRAIL_HEC_TOKEN": {
+                        "SPLUNK_HEC_TOKEN": {
                             "Ref": "CloudTrailSplunkHttpEventCollectorToken"
                         }
                     }
