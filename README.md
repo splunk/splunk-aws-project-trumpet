@@ -2,8 +2,6 @@
 
 Trumpet is a tool that leverages AWS CloudFormation to set up all the AWS infrastructure needed to push AWS CloudTrail, AWS CloudWatch Metrics, and AWS Config data to Splunk using HTTP Event Collector (HEC). Once the template has been deployed, the user only needs the Splunk Add-on for AWS, Splunk Add-on for Amazon Kinesis Firehose and Splunk App for AWS installed on their Splunk instance in order to populate several of the dashboards included in the Splunk App for AWS with their data.
 
-<img src="README-static-assets/config_img.png">
-
 ## To start using Trumpet
 Trumpet is provided as a CloudFormation template that sets up an s3 backed static configuration site where you can customize the template to your requirements. Once configured, download the generated template and deploy it in the AWS regions you would like to collect data from.
 
@@ -15,9 +13,27 @@ Use the AWS CloudFormation console, or the following cli command. Change the sta
 $ aws cloudformation deploy --template-file aws-splunk-automation-configuration-template.json --stack-name "splunk-aws-configuration-site" --capabilities CAPABILITY_IAM
 ```
 
-### Configure your architecture with the configuration site
+The template will output a url once it has completed deploying. You can find this url in the outputs tab of the AWS CloudFormation console, or by running the following AWS CLI command.
 
-TODO - images and steps after first deployment
+`$ aws cloudformation describe-stacks --stack-name splunk-aws-configuration-site --query 'Stacks[0].Outputs'`
+
+Open the generated url to access the configuration site. Note: this site runs entirely local to your browser.
+
+### Design your architecture using the configuration site
+
+<img src="README-static-assets/config_img.png">
+
+Select which AWS services you would like to collect from. For each selection, you will need to provide an enabled Splunk HTTP Event Collector Token. 
+
+Additionally, provide the HTTP Event Collector endpoint of your Splunk environment.
+
+After you have entered in the details about your Splunk environment, download the customized template. You can now run this template in the AWS CloudFormation console, or with the following AWS CLI command.
+
+```
+$ aws cloudformation deploy --template-file customized_splunk_aws_template.json --stack-name "splunk-aws-automation" --capabilities CAPABILITY_IAM
+```
+
+If the correct HTTP Event Collector After 5-10 minutes
 
 ## To start developing Trumpet
 ### Repository structure
@@ -51,7 +67,7 @@ TODO
 TODO
 #### Package the template
 
-Use the AWS CloudFormation console, or the following AWS CLI command. 
+Using the following AWS CLI command. 
 
 Update `{ BucketName }` in the command with an existing AWS S3 bucket. Instructions to create a new s3 bucket using the AWS CLI [here](https://docs.aws.amazon.com/cli/latest/userguide/using-s3-commands.html).
 ```
@@ -62,6 +78,9 @@ $ aws cloudformation package --template trumpet_full.json --s3-bucket { BucketNa
 ```
 $ aws cloudformation deploy --template-file template.output.json --stack-name "splunk-aws-automation" --capabilities CAPABILITY_IAM
 ```
+
+## Troubleshooting
+TODO
 
 ## Support
 
