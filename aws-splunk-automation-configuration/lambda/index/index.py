@@ -16,8 +16,14 @@ def handler(event, context):
     logger.info('REQUEST RECEIVED:\n {}'.format(context))
     if event['RequestType'] == 'Create':
         # Push index.html + other frontend assets to the s3 bucket created
-        s3.upload_file(basePath + '/build_source/index.html', event["ResourceProperties"]["S3Bucket"], 'index.html', ExtraArgs={'ContentType': "text/html"})
-        s3.upload_file(basePath + '/build_source/main.ea599aeb46ecb1fb029e.js', event["ResourceProperties"]["S3Bucket"], 'main.ea599aeb46ecb1fb029e.js', ExtraArgs={'ContentType': "text/javascript"})
+        for filename in os.listdir(basePath + '/build_source'):
+            if (filename[0] == "."):
+                continue
+            if filename.endswith(".html"):
+                s3.upload_file(basePath + '/build_source/' + filename, event["ResourceProperties"]["S3Bucket"], filename, ExtraArgs={'ContentType': "text/html"})
+            if filename.endswith(".js"):
+                s3.upload_file(basePath + '/build_source/' + filename, event["ResourceProperties"]["S3Bucket"], filename, ExtraArgs={'ContentType': "text/javascript"})
+
         logger.info('CREATE!')
         sendResponse(event, context, "SUCCESS", { "Message": "Resource creation successful!" })
     elif event['RequestType'] == 'Delete':
