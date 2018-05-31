@@ -32,7 +32,7 @@ var cloudwatch = new aws.CloudWatch();
 var dynamodb = new aws.DynamoDB();
 var periodicity_minutes = 5;
 var periodicity_seconds = periodicity_minutes * 60;
-var namespace = 'AWS/EC2';
+var namespace =  process.env.NAMESPACE;
 var region = process.env.AWS_REGION;
 
 

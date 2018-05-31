@@ -1,0 +1,27 @@
+body {
+    text-align: center;
+    margin: 0;
+}
+
+.header {
+    width: 100%;
+    height: 55px;
+    background-color: #333;
+}
+
+.container {
+    @mixin reset;
+
+    margin-top: 2%;
+    display: inline-block;
+    font-size: $fontSizeLarge;
+    line-height: 200%;
+    margin: $spacing $spacingHalf;
+    padding: $spacingHalf calc($spacing * 2) $spacing calc($spacing * 2);
+    border-radius: $borderRadius;
+    box-shadow: $overlayShadow;
+    background-color: $white;
+    color: $gray45;
+    text-align: center;
+    width: 80%;
+}

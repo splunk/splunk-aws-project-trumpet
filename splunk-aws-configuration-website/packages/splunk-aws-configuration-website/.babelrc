@@ -1,0 +1,10 @@
+{
+  "presets": [
+    [
+      "@splunk/babel-preset",
+      {
+        "webpack": true
+      }
+    ]
+  ]
+}

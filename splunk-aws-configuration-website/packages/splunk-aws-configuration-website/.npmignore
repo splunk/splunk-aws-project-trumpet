@@ -1,0 +1,25 @@
+# Source code
+/src/
+/test/
+/demo/
+
+# Tools
+/.babelrc
+/.eslintrc.js
+/stylelint.config.js
+/webpack.config.js
+
+# Testing
+/coverage_report/
+/functional*
+/splunktional*
+/test-reports/
+/karma.conf.js
+/webpack.test.config.js
+/*hooks.js
+/test-app
+
+# Misc
+/.npmignore
+/licenses.json
+/*.tgz

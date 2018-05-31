@@ -163,7 +163,7 @@
             "Properties": {
                 "Code": {
                     "S3Bucket": "nstone-website-test", 
-                    "S3Key": "e69be904b7626708efdb8af525dad66a"
+                    "S3Key": "585d4f013252c70f1807fef4f463aea8"
                 }, 
                 "Description": "Send CloudWatch Metrics to Splunk using HTTP event collector", 
                 "MemorySize": 512, 
