@@ -38,12 +38,12 @@ After 5-10 minutes, Splunk will begin receiving data from the configured AWS ser
 ## To start developing Trumpet
 ### Repository structure
 The Trumpet project is broken up into three major parts. 
-* The CloudFormation template that creates the configuration website is contained in `aws-splunk-automation-configuration`.  
+* The CloudFormation template that creates the configuration website is contained in `splunk-aws-automation-configuration`.  
 * The source for the configuration website is contained in `splunk-aws-configuration-website`
-* The base CloudFormation template that gets customized by the configuration website and the Lambda code used in the template is contained in `aws-splunk-automation`
+* The base CloudFormation template that gets customized by the configuration website and the Lambda code used in the template is contained in `splunk-aws-automation`
 
 ### Packaging process
-The three parts of the Trumpet project are dependent on each other in the following way. 
+The three parts of the Trumpet project are dependent on each other in the following way. `asplunk-ws-configuration-website` contains an inline copy of the packaged `splunk-aws-configuration` template. Any changes to `splunk-aws-configuration-website` require a webpack build, and an update to the site source in `splunk-aws-automation-configuration`. After the update. A final package to `splunk-aws-automation-configuration` will allow you to run the deployment end to end with your changes. The commands to perform each of these ations are described in more detail below.
 
 ### Modifying the configuration site CloudFormation template
 TODO

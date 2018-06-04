@@ -16,7 +16,7 @@
     "start": "webpack --watch",
     "start:app": "webpack --watch --config demo/webpack.splunkapp.config.js",
     "start:demo": "webpack-dev-server --config demo/webpack.standalone.config.js",
-    "start:static": "NODE_ENV=production webpack --bail webpack --config demo/webpack.standalone.config.js",
+    "start:static": "NODE_ENV=production webpack --config demo/webpack.standalone.config.js",
     "stylelint": "stylelint \"src/**/*.css\" --config stylelint.config.js",
     "test": "splunk-karma-unit-test-runner start karma.conf.js --single-run",
     "test:ci": "yarn run test -- --reporters mocha,junit --junitDirectory test-reports --junitFilename unit-results.xml --no-colors",
