@@ -11,9 +11,27 @@ The second version of the template requires the user to create HEC tokens for ea
 ### 0. Splunk Prerequisites
 Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?), the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876/), and the [Splunk Add-on for AWS Kinesis Firehose](https://splunkbase.splunk.com/app/3719/) on the endpoint/s that will be receiving data using HTTP Event Collector.
 
-* `[PRE RELEASE NOTE]` 
-   * The current version of the Firehose TA does not support the aws:config:notification sourcetype, this can be fixed with a small addition to the props.conf and transforms.conf of the Firehose TA
-
+* `[PRE-RELEASE NOTE]` 
+   * The current version of the Firehose TA does not support the `aws:config:notification` sourcetype, this can be fixed with a small addition to the props.conf and transforms.conf of the Firehose TA
+   * Add this stanza to `props.conf`
+       * ```# Set Source to aws_firehose_confignotification when ingesting data
+          [source::aws_firehose_confignotification]
+          TRANSFORMS-extract_detail_from_cloudwatch_events=extract_detail_from_cloudwatch_events
+          TRANSFORMS-use_for_cloudtrail_sourcetype_change=use_for_confignotification_sourcetype_change
+          LINE_BREAKER=(([\r\n]+)|(?={"version":"[\d.]+","id":))
+          SHOULD_LINEMERGE = false
+          NO_BINARY_CHECK = false
+          TRUNCATE = 8388608
+          TIME_PREFIX = \"notificationCreationTime\"\s*\:\s*\"
+          TIME_FORMAT = %Y-%m-%dT%H:%M:%S%Z
+          MAX_TIMESTAMP_LOOKAHEAD = 28
+          sourcetype = aws:config:notification```
+   * Add this stanza to `transforms.conf`
+       * ```[use_for_confignotification_sourcetype_change]
+          REGEX = .*
+          DEST_KEY = MetaData:Sourcetype
+          FORMAT = sourcetype::aws:config:notification```
+          
 ### 1. Deploy the CloudFormation template
 
 #### Automated HTTP Event Collector (HEC) configuration template
