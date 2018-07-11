@@ -18,7 +18,6 @@ Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?), the 
 
 #### Automated HTTP Event Collector (HEC) configuration template
 If using the automatic HEC configuration version of the template, download the `configuration_website_builder_template_hec_auto_config.json` and launch the stack in the AWS CloudFormation console. 
-[<img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png">](https://www.google.com)
 
 Once the template has finished deploying the template will output a url linking to the Splunk configuration website. You can find this url in the outputs tab of the AWS CloudFormation console.
 
@@ -27,7 +26,7 @@ Open the generated url to access the configuration site. Note: this site runs en
 #### Manual HTTP Event Collector (HEC) configuration template
 
 If using the manual HEC configuration version of the template, download the `configuration_website_builder_template_no_auto_config.json` and deploy using the AWS CloudFormation console.
-[<img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png">](https://www.google.com)
+
 If you prefer to use the AWS CLI to deploy, download the template and launch the stack using the following CLI command. Change the stack-name value if needed.
 ```
 $ aws cloudformation deploy --template-file configuration_website_builder_template_no_auto_config.json --stack-name "splunk-aws-configuration-site" --capabilities CAPABILITY_IAM
