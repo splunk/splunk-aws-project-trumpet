@@ -21,7 +21,7 @@ const configureLogger = (context, callback) => {
 }
 
 var config = {
-    url: process.env.SPLUNK_HEC_URL,
+    url: process.env.SPLUNK_HEC_URL.split(":").slice(0, 2).join(":") + ":8088/services/collector",
     token: process.env.SPLUNK_HEC_TOKEN,
     maxBatchCount: 1,
     maxRetries: 2

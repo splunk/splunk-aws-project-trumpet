@@ -19,7 +19,7 @@
 'use strict';
 
 const loggerConfig = {
-    url: process.env.SPLUNK_HEC_URL,
+    url: process.env.SPLUNK_HEC_URL.split(":").slice(0, 2).join(":") + ":8088/services/collector",
     token: process.env.SPLUNK_HEC_TOKEN,
     maxBatchCount: 0, // Manually flush events
     maxRetries: 3,    // Retry 3 times

@@ -122,51 +122,10 @@ exports.handler = function(event, context, callback) {
                                 });
                             }
                         } else {
-                            console.log('Recorder exists but no delivery channel. Deleting old recorder and creating a new recorder and a new delivery channel.');
-                            console.log('Deleting the recorder');
+                            console.log('There is a stale recorder, but no delivery channel. Delete this recorder before running the template again');
 
-                            var params = {
-                              ConfigurationRecorderName: configurationRecorders.ConfigurationRecorders[0].name
-                            };
-                            configservice.deleteConfigurationRecorder(params, function(err, data) {
-                                if (err) {
-                                    console.log(err, err.stack);
-                                    response.send(event, context, response.FAILED, {
-                                        'Status': 'NEW'
-                                    });
-                                } else {
-                                    console.log(data);
-                                    var crParamsDeletedRecorder = {};
-                                    console.log('Checking to see if if we are in us-east-1. If so, we will include global resources.');
-
-                                    if (current_region == "us-east-1") {
-                                        console.log('We are in us-east-1. Setting includeGlobalResouceTypes to true.');
-                                        crParamsDeletedRecorder = {
-                                            ConfigurationRecorder: {
-                                                name: event.ResourceProperties.ConfigRecorderName,
-                                                recordingGroup: {
-                                                    allSupported: true,
-                                                    includeGlobalResourceTypes: true
-                                                },
-                                                roleARN: event.ResourceProperties.RecorderRoleArn
-                                            }
-                                        };
-                                    } else {
-                                        console.log('We are not in us-east-1. Setting includeGlobalResouceTypes to false.');
-                                        crParamsDeletedRecorder = {
-                                            ConfigurationRecorder: {
-                                                name: event.ResourceProperties.ConfigRecorderName,
-                                                recordingGroup: {
-                                                    allSupported: true,
-                                                    includeGlobalResourceTypes: false
-                                                },
-                                                roleARN: event.ResourceProperties.RecorderRoleArn
-                                            }
-                                        };
-                                    }
-
-                                    put_recorder_and_delivery_channel_and_start_recorder(crParamsDeletedRecorder, event, context);
-                                }
+                            response.send(event, context, response.FAILED, {
+                                'Status': 'NEW'
                             });
                         }
                     }
@@ -184,54 +143,16 @@ exports.handler = function(event, context, callback) {
                     } else {
                         console.log(data);
                         if (data.DeliveryChannels.length > 0) {
-                            console.log('Old delivery channel exists. Deleting old channel and creating new configuration recorder and delivery channel');
-                            var params = {
-                                DeliveryChannelName: data.DeliveryChannels[0].name
-                            };
-                            configservice.deleteDeliveryChannel(params, function(err, data) {
-                                if (err) {
-                                    console.log(err, err.stack);
-                                    response.send(event, context, response.FAILED, {
-                                        'Status': 'NEW'
-                                    });
-                                } else {
-                                    console.log(data);
-                                    var crParamsNewRecorder = {};
-                                    console.log('Checking to see if if we are in us-east-1. If so, we will include global resources. includeGlobalResourceTypes set to true.');
+                            console.log('Old delivery channel exists. Delete this old delivery channel before rerunning the template');
 
-                                    if (current_region == "us-east-1") {
-                                        console.log('We are in us-east-1. Setting includeGlobalResouceTypes to true.');
-                                        crParamsNewRecorder = {
-                                            ConfigurationRecorder: {
-                                                name: event.ResourceProperties.ConfigRecorderName,
-                                                recordingGroup: {
-                                                    allSupported: true,
-                                                    includeGlobalResourceTypes: true
-                                                },
-                                                roleARN: event.ResourceProperties.RecorderRoleArn
-                                            }
-                                        };
-                                    } else {
-                                        console.log('We are not in us-east-1. Setting includeGlobalResouceTypes to false.');
-                                        crParamsNewRecorder = {
-                                            ConfigurationRecorder: {
-                                                name: event.ResourceProperties.ConfigRecorderName,
-                                                recordingGroup: {
-                                                    allSupported: true,
-                                                    includeGlobalResourceTypes: false
-                                                },
-                                                roleARN: event.ResourceProperties.RecorderRoleArn
-                                            }
-                                        };
-                                    }
-                                    put_recorder_and_delivery_channel_and_start_recorder(crParamsNewRecorder, event, context);
-                                }
+                            response.send(event, context, response.FAILED, {
+                                'Status': 'NEW'
                             });
                         } else {
                             console.log('No old delivery channel. Creating new configuration recorder and delivery channel');
                             var crParamsNewRecorder = {};
                             if (current_region == "us-east-1") {
-                                console.log('We are in us-east-1. Setting includeGlobalResouceTypes to true.');
+                                console.log('We are in us-east-1. Setting includeGlobalResourceTypes to true.');
                                 crParamsNewRecorder = {
                                     ConfigurationRecorder: {
                                         name: event.ResourceProperties.ConfigRecorderName,
@@ -243,7 +164,7 @@ exports.handler = function(event, context, callback) {
                                     }
                                 };
                             } else {
-                                console.log('We are not in us-east-1. Setting includeGlobalResouceTypes to false.');
+                                console.log('We are not in us-east-1. Setting includeGlobalResourceTypes to false.');
                                 crParamsNewRecorder = {
                                     ConfigurationRecorder: {
                                         name: event.ResourceProperties.ConfigRecorderName,
