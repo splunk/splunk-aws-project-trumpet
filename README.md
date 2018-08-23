@@ -83,43 +83,41 @@ After 5-10 minutes, Splunk will begin receiving data from the configured AWS ser
 ### Manual token setup
 Setting up the tokens required from the Splunk GUI is a straightforward process. For each supported sourcetype that you would like to ingest into Splunk, you will need to create a HEC token on the Splunk side (Depending on your Splunk architecture, this can be a deployment server, a Splunk instance acting as a forwarder, etc.).
 
-Currently 5 sourcetypes are supported by the automation templates
-* aws:config
-* aws:config:notification
-* aws:cloudtrail
-* aws:cloudwatch:guardduty
+Currently 4 sourcetypes are supported by the automation templates
+* ***aws:config***
+* ***aws:config:notification***
+* ***aws:cloudtrail***
+* ***aws:cloudwatch:guardduty***
 
 Create a token for each of the above sourcetypes that you would like to ingest into Splunk. Soe tokens have specific settings to ensure correct ingestion. Configuration for each token is detailed below.
 
-TODO
-
-* aws:config
-    * Name: [Enter a name of your choice]
-    * Enable indexer acknowledgement: [checked]
-    * Source type: [aws:config]
-    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
-    * App Context: [splunk_httpinput (splunk_httpinput)]
-* aws:config:notification
-    * Name: [Enter a name of your choice]
-    * Enable indexer acknowledgement: [checked]
-    * Source name override: aws_firehose_confignotification
-    * Source type: [aws:config:notification]
-    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
-    * App Context: [splunk_httpinput (splunk_httpinput)]
-* aws:cloudtrail
-    * Name: [Enter a name of your choice]
-    * Enable indexer acknowledgement: [checked]
-    * Source name override: aws_firehose_cloudtrail
-    * Source type: [aws:cloudtrail]
-    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
-    * App Context: [splunk_httpinput (splunk_httpinput)]
-* aws:cloudwatch:guardduty
-    * Name: [Enter a name of your choice]
-    * Enable indexer acknowledgement: [checked]
-    * Source name override: aws_cloudwatchevents_guardduty
-    * Source type: [aws:cloudwatch:guardduty]
-    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
-    * App Context: [splunk_httpinput (splunk_httpinput)]
+* ***aws:config***
+    * **Name:** Enter a name of your choice
+    * **Enable indexer acknowledgement:** checked
+    * **Source type:** aws:config
+    * **Index:** selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)
+    * **App Context:** splunk_httpinput (splunk_httpinput)
+* ***aws:config:notification***
+    * **Name:** Enter a name of your choice
+    * **Enable indexer acknowledgement:** checked
+    * **Source name override:** aws_firehose_confignotification
+    * **Source type:** aws:config:notification
+    * **Index:** selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)
+    * **App Context:** splunk_httpinput (splunk_httpinput)
+* ***aws:cloudtrail***
+    * **Name:** Enter a name of your choice
+    * **Enable indexer acknowledgement:** checked
+    * **Source name override:** aws_firehose_cloudtrail
+    * **Source type:** aws:cloudtrail
+    * **Index:** selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)
+    * **App Context:** splunk_httpinput (splunk_httpinput)
+* ***aws:cloudwatch:guardduty***
+    * **Name:** Enter a name of your choice
+    * **Enable indexer acknowledgement:** checked
+    * **Source name override:** aws_cloudwatchevents_guardduty
+    * **Source type:** aws:cloudwatch:guardduty]
+    * **Index:** selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)
+    * **App Context:** splunk_httpinput (splunk_httpinput)
 
 ## Troubleshooting
 - Check that each HEC token is enabled and that SSL is turned on
