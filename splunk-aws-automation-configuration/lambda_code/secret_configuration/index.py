@@ -9,7 +9,6 @@ logger.setLevel(logging.INFO)
 
 def handler(event, context):
     if (event["RequestType"] == "Delete"):
-        print "Something?"
         sendResponse(event, context, "SUCCESS", {"Message": "Delete successful"})
     client = boto3.client('secretsmanager')
     splunk_password = event["ResourceProperties"]["SplunkPassword"]
