@@ -7,11 +7,11 @@ Trumpet is provided as a CloudFormation template that sets up an s3 backed stati
 
 There are two versions of the template. The first is a quickstart version that will automate much of the Splunk side configuration. This version will create and configure all required HTTP Event Collector tokens automatically. It does require the Splunk management port (default 8089) to be open while the template runs, as this is the port the template uses to interact with the token creating REST API.
 
-The second version of the template requires the user to create HEC tokens for each AWS data source they would like to collect (up to 5 currently). Otherwise, note that both templates will configure the same AWS resources.
+The second version of the template requires the user to create HEC tokens for each AWS data source they would like to collect (up to 4 currently). Otherwise, note that both templates will configure the same AWS resources.
 ### 0. Splunk Prerequisites
 Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?), the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876/), and the [Splunk Add-on for AWS Kinesis Firehose](https://splunkbase.splunk.com/app/3719/) on the endpoint/s that will be receiving data using HTTP Event Collector.
 
-* `A note about the AWS Config Notification data source` 
+* A note about the AWS Config Notification data source: 
    * The current version of the Firehose TA does not support the `aws:config:notification` sourcetype, this can be fixed with a small addition to the props.conf and transforms.conf of the Firehose TA.
    * Add this stanza to `props.conf`
        * ```
@@ -94,10 +94,32 @@ Create a token for each of the above sourcetypes that you would like to ingest i
 TODO
 
 * aws:config
-    * name: 
+    * Name: [Enter a name of your choice]
+    * Enable indexer acknowledgement: [checked]
+    * Source type: [aws:config]
+    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
+    * App Context: [splunk_httpinput (splunk_httpinput)]
 * aws:config:notification
+    * Name: [Enter a name of your choice]
+    * Enable indexer acknowledgement: [checked]
+    * Source name override: aws_firehose_confignotification
+    * Source type: [aws:config:notification]
+    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
+    * App Context: [splunk_httpinput (splunk_httpinput)]
 * aws:cloudtrail
+    * Name: [Enter a name of your choice]
+    * Enable indexer acknowledgement: [checked]
+    * Source name override: aws_firehose_cloudtrail
+    * Source type: [aws:cloudtrail]
+    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
+    * App Context: [splunk_httpinput (splunk_httpinput)]
 * aws:cloudwatch:guardduty
+    * Name: [Enter a name of your choice]
+    * Enable indexer acknowledgement: [checked]
+    * Source name override: aws_cloudwatchevents_guardduty
+    * Source type: [aws:cloudwatch:guardduty]
+    * Index: [selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros)]
+    * App Context: [splunk_httpinput (splunk_httpinput)]
 
 ## Troubleshooting
 - Check that each HEC token is enabled and that SSL is turned on
