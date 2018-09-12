@@ -140,4 +140,4 @@ $ aws configservice deliver-config-snapshot --delivery-channel-name default
 
 ## Support
 
-Trumpet is currently maintained by [nstonesplunk](https://github.com/nstonesplunk)
+Trumpet is currently maintained by [nstonesplunk](https://github.com/nstonesplunk). This is not a Splunk supported solution.
