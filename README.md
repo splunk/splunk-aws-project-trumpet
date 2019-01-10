@@ -2,15 +2,29 @@
 
 Trumpet is a tool that leverages AWS CloudFormation to set up all the AWS infrastructure needed to push AWS CloudTrail, AWS Config, and AWS GuardDuty data to Splunk using HTTP Event Collector (HEC). Once the template has been deployed, the user only needs the Splunk Add-on for AWS, Splunk Add-on for Amazon Kinesis Firehose and Splunk App for AWS installed on their Splunk environment in order to populate several of the dashboards included in the Splunk App for AWS with their data.
 
+Currently the following sourcetypes are supported by the automation templates:
+* ***aws:config***
+* ***aws:config:notification***
+* ***aws:cloudtrail***
+* ***aws:cloudwatchlogs***
+    * Example: AWS Lambda logs
+    * Example: custom logs
+* ***aws:cloudwatchlogs:vpcflowlogs***
+* ***aws:AWS service sending to CloudWatch Events:firehose***
+    * Example: ***aws:guardduty:firehose***
+    * Example: ***aws:macie:firehose***
+
 **Major update:**
 
 Trumpet has been updated to support a variety of additional AWS services and now only requires two Splunk HTTP Event Collector (HEC) tokens, one with indexer acknowledgement enabled and one without indexer acknowledgement enabled. 
 
 In addition, there is no longer an automated HEC token creation template and manual template, the selection of manual vs automated HEC token creation is now fully encapsulated in the setup website.
 
-If you are visiting this repository from the Splunk blog post - please note that the instructions in the post are currently out of date. Please follow the instructions in this README instead. (This message will be removed when the blog post is updated to reflect the Trumpet update)
+**If you are visiting this repository from the Splunk blog post** - please note that the instructions in the post are currently out of date. Please follow the instructions in this README instead. (This message will be removed when the blog post is updated to reflect the most recent Trumpet update)
 
 Due to the significance of the changes, you may want to access the old version in the v0.1 release branch.
+
+You can find a summary of these changes in this repo's CHANGELOG.md file.
 
 ## To start using Trumpet
 Trumpet is provided as a CloudFormation template that sets up an s3 backed static configuration site where you can customize the template to your requirements. Once configured, download the generated template and deploy it in the AWS regions you would like to collect data from.
@@ -38,7 +52,7 @@ Open the generated url to access the configuration site. Note that this site run
 
 <img src="README-static-assets/auto_hec_config_site.png">
 
-Select which AWS services you would like to collect from. You need to provide the HTTP Event Collector (HEC) endpoint of your Splunk environment, and determine if you would like to automatically generate the HEC tokens required. Automated HEC token generation requires you to provide a Splunk username/password with the capability to create HEC tokens, as well the management endpoint and port (usually 8089). If you choose not to automatically generate HEC tokens in your Splunk environment, you will need to provide your manually generated, enabled Splunk HTTP Event Collector Tokens. See the `Manual Token Setup` section of this documentation.
+Select which AWS services you would like to collect from. You need to provide the HTTP Event Collector (HEC) endpoint of your Splunk environment, and determine if you would like to automatically generate the HEC tokens required. Automated HEC token generation requires you to provide a Splunk username/password with the capability to create HEC tokens, as well the management endpoint and port (usually 8089). **If you choose this option, the template will be generated with your Splunk password in PLAINTEXT.** This approach should **only** be used for prototype trumpet deployments on **non-production** environments, otherwise, manually create the HEC tokens in Splunk first. If you choose not to automatically generate HEC tokens in your Splunk environment, you will need to provide your manually generated, enabled Splunk HTTP Event Collector Tokens. See the `Manual Token Setup` section of this documentation.
 
 After you have entered in the details about your Splunk environment and/or made your data collection selections, download the customized template. You can now run this template in the AWS CloudFormation console, or through the AWS CLI.
 
@@ -55,19 +69,6 @@ After 5-10 minutes, Splunk will begin receiving data from some of the configured
 
 ### Manual token setup
 Setting up the tokens required from the Splunk GUI is a straightforward process. You will need to create a pair of HEC tokens on the Splunk side (Depending on your Splunk architecture, this can be a deployment server, a Splunk instance acting as a forwarder, etc.).
-
-Currently the following sourcetypes are supported by the automation templates
-* ***aws:config***
-* ***aws:config:notification***
-* ***aws:cloudtrail***
-* ***aws:cloudwatchlogs***
-    * Example: AWS Lambda logs
-    * Example: custom logs
-* ***aws:cloudwatchlogs:vpcflowlogs***
-* ***aws:AWS service sending to CloudWatch Events:firehose***
-    * Example: ***aws:guardduty:firehose***
-    * Example: ***aws:macie:firehose***
-
 
 If you select the aws:config sourcetype, you will need to create a HEC token with indexer acknowledgement turned off. All other sourcetypes will require a single HEC token with indexer acknowledgement turned on. Details about the specific configuration for these two tokens is detailed below.
 
