@@ -50,21 +50,21 @@
     },
     "Mappings": {
       "BucketMap": {
-        "us-east-1": { "BucketName": "trumpet-splunk-us-east-1" },
-        "us-east-2": { "BucketName": "trumpet-splunk-us-east-2" },
-        "us-west-1": { "BucketName": "trumpet-splunk-us-west-1" },
-        "us-west-2": { "BucketName": "trumpet-splunk-us-west-2" },
-        "ca-central-1": { "BucketName": "trumpet-splunk-ca-central-1" },
-        "eu-central-1" : { "BucketName": "trumpet-splunk-eu-central-1" },
-        "eu-west-1": { "BucketName": "trumpet-splunk-eu-west-1" },
-        "eu-west-2": { "BucketName": "trumpet-splunk-eu-west-2" },
-        "eu-west-3": { "BucketName": "trumpet-splunk-eu-west-3" },
-        "ap-northeast-1": { "BucketName": "trumpet-splunk-ap-northeast-1" },
-        "ap-northeast-2": { "BucketName": "trumpet-splunk-ap-northeast-2" },
-        "ap-southeast-1": { "BucketName": "trumpet-splunk-ap-southeast-1" },
-        "ap-southeast-2": { "BucketName": "trumpet-splunk-ap-southeast-2" },
-        "ap-south-1": { "BucketName": "trumpet-splunk-ap-south-1" },
-        "sa-east-1": { "BucketName": "trumpet-splunk-sa-east-1" }
+        "us-east-1": { "BucketName": "trumpet-splunk-prod-us-east-1" },
+        "us-east-2": { "BucketName": "trumpet-splunk-prod-us-east-2" },
+        "us-west-1": { "BucketName": "trumpet-splunk-prod-us-west-1" },
+        "us-west-2": { "BucketName": "trumpet-splunk-prod-us-west-2" },
+        "ca-central-1": { "BucketName": "trumpet-splunk-prod-ca-central-1" },
+        "eu-central-1" : { "BucketName": "trumpet-splunk-prod-eu-central-1" },
+        "eu-west-1": { "BucketName": "trumpet-splunk-prod-eu-west-1" },
+        "eu-west-2": { "BucketName": "trumpet-splunk-prod-eu-west-2" },
+        "eu-west-3": { "BucketName": "trumpet-splunk-prod-eu-west-3" },
+        "ap-northeast-1": { "BucketName": "trumpet-splunk-prod-ap-northeast-1" },
+        "ap-northeast-2": { "BucketName": "trumpet-splunk-prod-ap-northeast-2" },
+        "ap-southeast-1": { "BucketName": "trumpet-splunk-prod-ap-southeast-1" },
+        "ap-southeast-2": { "BucketName": "trumpet-splunk-prod-ap-southeast-2" },
+        "ap-south-1": { "BucketName": "trumpet-splunk-prod-ap-south-1" },
+        "sa-east-1": { "BucketName": "trumpet-splunk-prod-sa-east-1" }
       }
     },
     "Resources": {

@@ -33,7 +33,7 @@
                               "BucketName"
                           ]
                       },
-                      "S3Key": "index.zip"
+                      "S3Key": "index_v0.2.zip"
                   },
                   "Handler": "index.handler",
                   "Role": {
