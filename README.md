@@ -16,7 +16,7 @@ Currently the following sourcetypes are supported by the automation templates:
 
 **Major update:**
 
-Trumpet has been updated to support a variety of additional AWS services and now only requires two Splunk HTTP Event Collector (HEC) tokens, one with indexer acknowledgement enabled and one without indexer acknowledgement enabled. 
+Trumpet has been updated to support a variety of additional AWS services and now only requires a maximum of two Splunk HTTP Event Collector (HEC) tokens, one with indexer acknowledgement enabled and one without indexer acknowledgement enabled. 
 
 In addition, there is no longer an automated HEC token creation template and manual template, the selection of manual vs automated HEC token creation is now fully encapsulated in the setup website.
 
@@ -27,26 +27,16 @@ Due to the significance of the changes, you may want to access the old version i
 You can find a summary of these changes in this repo's CHANGELOG.md file.
 
 ## To start using Trumpet
-Trumpet is provided as a CloudFormation template that sets up an s3 backed static configuration site where you can customize the template to your requirements. Once configured, download the generated template and deploy it in the AWS regions you would like to collect data from.
+Trumpet is provided as an HTML webpage that can be run locally in a web browser where you can customize the template to your requirements. Once configured, download the generated template and deploy it in the AWS regions you would like to collect data from.
 
 ### 0. Splunk Prerequisites
 Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?) and the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876/) on the endpoint/s that will be receiving data using HTTP Event Collector.
           
-### 1. Deploy the CloudFormation template
+### 1. Open the configuration webpage
 
-Download `trumpet_website_template.json` and launch the stack in the AWS CloudFormation console. 
+Download `trumpet_website_source.zip` and unzip the file. 
 
-If you prefer to use the AWS CLI to deploy, download the template and launch the stack using the following CLI command. Change the stack-name value if needed.
-```
-$ aws cloudformation deploy --template-file trumpet_website_template.json --stack-name "splunk-aws-configuration-site" --capabilities CAPABILITY_IAM
-```
-
-The template will output a url linking to a one-time Splunk configuration website once it has completed deployment. You can find this url in the outputs tab of the AWS CloudFormation console, or by running the following AWS CLI command.
-```
-$ aws cloudformation describe-stacks --stack-name splunk-aws-configuration-site --query 'Stacks[0].Outputs'
-```
-
-Open the generated url to access the configuration site. Note that this site runs entirely local to your browser.
+Open the index.html file in a web browser (usually this can be done by double clicking to open the file, otherwise, left click -> select *Open with* -> select a web browser).
 
 ### 2. Choose your preferences using the configuration site
 
@@ -104,6 +94,28 @@ $ aws configservice deliver-config-snapshot --delivery-channel-name default
 - Check CloudWatch logs for malfunctioning Lambdas.
 - If the `aws:config:notification` sourcetype is not being ingested as expected, check that the AWS Config recorder is turned on. The recorder should be turned on by the template, however if there is an existing recorder that is turned off when the template runs, the recorder will need to be turned on manually from the AWS Console or using the AWS CLI.
 - In progress...
+
+## Hosting Trumpet
+
+There are a number of options for users wanting to host Trumpet.
+
+The Trumpet tool can be run as a Splunk app, with similar steps to those described in the above, except that *Step 1. Open the configuration webpage* will be replaced with installing and opening the Splunk app in the trumpet.spl file contained in this repository.
+
+The Trumpet tool can also be run as an s3 backed hosted website. Deployment of this website can be automated using the following depployment steps.
+
+Download `trumpet_website_template.json` and launch the stack in the AWS CloudFormation console. 
+
+If you prefer to use the AWS CLI to deploy, download the template and launch the stack using the following CLI command. Change the stack-name value if needed.
+```
+$ aws cloudformation deploy --template-file trumpet_website_template.json --stack-name "splunk-aws-configuration-site" --capabilities CAPABILITY_IAM
+```
+
+The template will output a url linking to a one-time Splunk configuration website once it has completed deployment. You can find this url in the outputs tab of the AWS CloudFormation console, or by running the following AWS CLI command.
+```
+$ aws cloudformation describe-stacks --stack-name splunk-aws-configuration-site --query 'Stacks[0].Outputs'
+```
+
+Open the generated url to access the configuration site. Note that this site runs entirely local to your browser.
 
 ## Support
 

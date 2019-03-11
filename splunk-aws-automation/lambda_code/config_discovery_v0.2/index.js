@@ -1,15 +1,47 @@
 // dependencies
 var AWS = require('aws-sdk');
-var response = require('cfn-response');
+var url = require('url');
+var https = require('https');
 var configservice = new AWS.ConfigService();
-var current_region = process.env.AWS_REGION
+var current_region = process.env.AWS_REGION;
+
+function send(event, context, status, payload) {
+    var body = JSON.stringify({
+        StackId: event.StackId,
+        RequestId: event.RequestId,
+        LogicalResourceId: event.LogicalResourceId,
+        NoEcho: false,
+        Data: payload,
+        Status: status,
+        Reason: 'See the details in CloudWatch Log Stream: ' + context.logStreamName,
+        PhysicalResourceId: context.logStreamName
+    });
+    var requestOptions = {
+        headers: {
+            'content-length': body.length,
+            'content-type': ''
+        },
+        hostname: url.parse(event.ResponseURL).hostname,
+        port: 443,
+        path: url.parse(event.ResponseURL).path,
+        method: 'PUT'
+    };
+    var makeRequest = https.request(requestOptions, function(response) {
+        context.done();
+    });
+    makeRequest.on('error', function(error) {
+        context.done();
+    });
+    makeRequest.write(body);
+    makeRequest.end();
+}
 
 function put_delivery_channel_and_start_recorder(dcParams, event) {
     console.log("Creating delivery channel");
     configservice.putDeliveryChannel(dcParams, function(err, data) {
         if (err) {
             console.log(err, err.stack);
-            response.send(event, context, response.FAILED, {
+            send(event, context, 'FAILED', {
                 'Status': 'NEW'
             });
         } else {
@@ -20,12 +52,12 @@ function put_delivery_channel_and_start_recorder(dcParams, event) {
             configservice.startConfigurationRecorder(params, function(err, data) {
                 if (err) {
                     console.log(err, err.stack);
-                    response.send(event, context, response.FAILED, {
+                    send(event, context, 'FAILED', {
                         'Status': 'NEW'
                     });
                 } else {
                     console.log(data);
-                    response.send(event, context, response.SUCCESS, {
+                    send(event, context, 'SUCCESS', {
                         'Status': 'NEW',
                         'FinalS3BucketConfig': event.ResourceProperties.S3BucketConfig,
                         'FinalS3BucketConfigArn': event.ResourceProperties.S3BucketConfigArn
@@ -40,7 +72,7 @@ function put_recorder_and_delivery_channel_and_start_recorder(crParamsNewRecorde
     configservice.putConfigurationRecorder(crParamsNewRecorder, function (err, data) {
         if (err) {
             console.log(err, err.stack);
-            response.send(event, context, response.FAILED, {
+            send(event, context, 'FAILED', {
                 'Status': 'NEW'
             });
         } else {
@@ -64,7 +96,7 @@ exports.handler = function(event, context, callback) {
     configservice.describeConfigurationRecorders(null, function(err, data) {
         if (err) {
             console.log(err, err.stack);
-            response.send(event, context, response.FAILED, {
+            send(event, context, 'FAILED', {
                 'Status': 'NEW'
             });
         } else {
@@ -77,7 +109,7 @@ exports.handler = function(event, context, callback) {
                 configservice.describeDeliveryChannels(null, function(err, data) {
                     if (err) {
                         console.log(err, err.stack);
-                        response.send(event, context, response.FAILED, {
+                        send(event, context, 'FAILED', {
                             'Status': 'NEW'
                         });
                     } else {
@@ -88,7 +120,7 @@ exports.handler = function(event, context, callback) {
                             if (deliveryChannel.s3BucketName) {
                                 if (deliveryChannel.s3KeyPrefix) {
                                     console.log('Bucket has a prefix. Full bucket name: ' + deliveryChannel.s3BucketName + '\\' + deliveryChannel.s3KeyPrefix);
-                                    response.send(event, context, response.SUCCESS, {
+                                    send(event, context, 'SUCCESS', {
                                         'Status': 'EXISTING',
                                         'ConfigurationRecorder': configurationRecorders.ConfigurationRecorders[0].name,
                                         'FinalS3BucketConfig': deliveryChannel.s3BucketName + '\\' + deliveryChannel.s3KeyPrefix,
@@ -96,7 +128,7 @@ exports.handler = function(event, context, callback) {
                                     });
                                 } else {
                                     console.log('Bucket does not have a prefix. Full bucket name: ' + deliveryChannel.s3BucketName);
-                                    response.send(event, context, response.SUCCESS, {
+                                    send(event, context, 'SUCCESS', {
                                         'Status': 'EXISTING',
                                         'ConfigurationRecorder': configurationRecorders.ConfigurationRecorders[0].name,
                                         'FinalS3BucketConfig': deliveryChannel.s3BucketName,
@@ -115,7 +147,7 @@ exports.handler = function(event, context, callback) {
                                     }
                                 };
                                 put_delivery_channel_and_start_recorder(dcParams, event, context);
-                                response.send(event, context, response.SUCCESS, {
+                                send(event, context, 'SUCCESS', {
                                     'Status': 'NEW',
                                     'FinalS3BucketConfig': event.ResourceProperties.S3BucketConfig ,
                                     'FinalS3BucketConfigArn': event.ResourceProperties.S3BucketConfigArn
@@ -124,7 +156,7 @@ exports.handler = function(event, context, callback) {
                         } else {
                             console.log('There is a stale recorder, but no delivery channel. Delete this recorder before running the template again');
 
-                            response.send(event, context, response.FAILED, {
+                            send(event, context, 'FAILED', {
                                 'Status': 'NEW'
                             });
                         }
@@ -137,7 +169,7 @@ exports.handler = function(event, context, callback) {
                 configservice.describeDeliveryChannels(null, function(err, data) {
                     if (err) {
                         console.log(err, err.stack);
-                        response.send(event, context, response.FAILED, {
+                        send(event, context, 'FAILED', {
                             'Status': 'NEW'
                         });
                     } else {
@@ -145,13 +177,13 @@ exports.handler = function(event, context, callback) {
                         if (data.DeliveryChannels.length > 0) {
                             console.log('Old delivery channel exists. Delete this old delivery channel before rerunning the template');
 
-                            response.send(event, context, response.FAILED, {
+                            send(event, context, 'FAILED', {
                                 'Status': 'NEW'
                             });
                         } else {
                             console.log('No old delivery channel. Creating new configuration recorder and delivery channel');
                             var crParamsNewRecorder = {};
-                            if (current_region == "us-east-1") {
+                            if (current_region === "us-east-1") {
                                 console.log('We are in us-east-1. Setting includeGlobalResourceTypes to true.');
                                 crParamsNewRecorder = {
                                     ConfigurationRecorder: {

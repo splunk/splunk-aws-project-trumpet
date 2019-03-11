@@ -20,6 +20,31 @@
                     "sa-east-1": { "BucketName": "trumpet-splunk-prod-sa-east-1" }
                   }
                 },
+                "Parameters": {
+                  "SplunkUsername": {
+                    "Description": "The Splunk user that will be used by the template to configure HEC for Trumpet. This user should have permission to list and create HEC tokens.",
+                    "Type": "String"
+                  },
+                  "SplunkPassword": {
+                    "Description": "The Splunk password for the provided user.",
+                    "Type": "String",
+                    "NoEcho": true
+                  }
+                },
+                "Metadata" : {
+                  "AWS::CloudFormation::Interface" : {
+                    "ParameterGroups" : [
+                      {
+                        "Label" : { "default" : "Splunk credentials" },
+                        "Parameters" : [ "SplunkUsername", "SplunkPassword" ]
+                      }
+                    ],
+                    "ParameterLabels" : {
+                      "SplunkUsername" : { "default" : "Splunk username" },
+                      "SplunkPassword" : { "default" : "Splunk password" }
+                    }
+                  }
+                },
                 "Resources": {
                     "LambdaHecAutomation": {
                         "Type": "AWS::Lambda::Function",
@@ -204,7 +229,7 @@
                         "Properties": {
                             "Code": {
                               "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "config_snapshot_logger.zip"
+                              "S3Key": "config_snapshot_logger_v0.2.zip"
                             },
                             "Description": "Stream events from an AWS S3 bucket being updated by AWS config to Splunk using HTTP event collector",
                             "MemorySize": 512,
@@ -339,7 +364,7 @@
                         "Properties": {
                             "Code": {
                               "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "config_discovery.zip"
+                              "S3Key": "config_discovery_v0.2.zip"
                             },
                             "Runtime": "nodejs6.10",
                             "Handler": "index.handler",
@@ -412,7 +437,7 @@
                         "Properties": {
                             "Code": {
                                 "ZipFile": {
-                                    "Fn::Sub": "var response = require('cfn-response');\nvar AWS = require('aws-sdk');\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n"
+                                    "Fn::Sub": "var https = require('https');\nvar url = require('url');\nvar AWS = require('aws-sdk');\nfunction send(event, context, status, payload) {\n    var body = JSON.stringify({\n        StackId: event.StackId,\n        RequestId: event.RequestId,\n        LogicalResourceId: event.LogicalResourceId,\n        NoEcho: false,\n        Data: payload,\n        Status: status,\n        Reason: 'See the details in CloudWatch Log Stream: ' + context.logStreamName,\n        PhysicalResourceId: context.logStreamName\n    });\n    var requestOptions = {\n        headers: {\n            'content-length': body.length,\n            'content-type': ''\n        },\n        hostname: url.parse(event.ResponseURL).hostname,\n        port: 443,\n        path: url.parse(event.ResponseURL).path,\n        method: 'PUT'\n    };\n    var makeRequest = https.request(requestOptions, function(response) {\n        context.done();\n    });\n    makeRequest.on('error', function(error) {\n        context.done();\n    });\n    makeRequest.write(body);\n    makeRequest.end();\n}\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => response.send(event, context, e ? response.FAILED : response.SUCCESS, e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n"
                                 }
                             },
                             "Role": {
@@ -499,7 +524,7 @@
                         "Properties": {
                             "Code": {
                               "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "splunk_cwe_firehose_processor.zip"
+                              "S3Key": "splunk_cwe_firehose_processor_v0.2.zip"
                             },
                             "Description": "Stream events from CloudWatch Events to Splunk using HTTP event collector",
                             "MemorySize": 512,
@@ -795,7 +820,7 @@
                         "Properties": {
                             "Code": {
                               "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "splunk_cwl_firehose_processor.zip"
+                              "S3Key": "splunk_cwl_firehose_processor_v0.2.zip"
                             },
                             "Description": "Stream events from CLoudWatch Logs to Splunk using HTTP event collector",
                             "MemorySize": 512,
@@ -1380,7 +1405,7 @@
                         "Properties": {
                             "Code": {
                               "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "splunk_vpc_firehose_processor.zip"
+                              "S3Key": "splunk_vpc_firehose_processor_v0.2.zip"
                             },
                             "Description": "Stream events from VPC Flow Logs to Splunk using HTTP event collector",
                             "MemorySize": 512,

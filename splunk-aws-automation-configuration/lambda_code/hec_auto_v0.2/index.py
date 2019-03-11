@@ -61,6 +61,7 @@ def handler(event, context):
     json_data = json.loads(response.text)
 
     HEC_tokens = {}
+    token_names = [indexer_no_ack_token_name, indexer_ack_token_name]
 
     for token_data in json_data["entry"]:
         if (token_data["name"].split("http://")[1] in token_names):

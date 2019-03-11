@@ -5,7 +5,8 @@
   "main": "index.js",
   "dependencies": {
     "aws-sdk": "2.211.0",
-    "cfn-response": "1.0.1"
+    "https": "^1.0.0",
+    "url": "^0.11.0"
   },
   "devDependencies": {},
   "scripts": {
