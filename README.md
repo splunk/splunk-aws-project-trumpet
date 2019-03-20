@@ -14,11 +14,11 @@ Currently the following sourcetypes are supported by the automation templates:
     * Example: ***aws:guardduty:firehose***
     * Example: ***aws:macie:firehose***
 
-**Major update:**
+## Major update:
 
 Trumpet has been updated to support a variety of additional AWS services and now only requires a maximum of two Splunk HTTP Event Collector (HEC) tokens, one with indexer acknowledgement enabled and one without indexer acknowledgement enabled. 
 
-In addition, there is no longer an automated HEC token creation template and manual template, the selection of manual vs automated HEC token creation is now fully encapsulated in the setup website.
+In addition, there is no longer an automated HEC token creation template and manual template, the selection of manual vs automated HEC token creation is now fully encapsulated in the setup page.
 
 **If you are visiting this repository from the Splunk blog post** - please note that the instructions in the post are currently out of date. Please follow the instructions in this README instead. (This message will be removed when the blog post is updated to reflect the most recent Trumpet update)
 
@@ -42,7 +42,7 @@ Open the index.html file in a web browser (usually this can be done by double cl
 
 <img src="README-static-assets/auto_hec_config_site.png">
 
-Select which AWS services you would like to collect from. You need to provide the HTTP Event Collector (HEC) endpoint of your Splunk environment, and determine if you would like to automatically generate the HEC tokens required. Automated HEC token generation requires you to provide a Splunk username/password with the capability to create HEC tokens, as well the management endpoint and port (usually 8089). **If you choose this option, the template will be generated with your Splunk password in PLAINTEXT.** This approach should **only** be used for prototype trumpet deployments on **non-production** environments, otherwise, manually create the HEC tokens in Splunk first. If you choose not to automatically generate HEC tokens in your Splunk environment, you will need to provide your manually generated, enabled Splunk HTTP Event Collector Tokens. See the `Manual Token Setup` section of this documentation.
+Select which AWS services you would like to collect from. You need to provide the HTTP Event Collector (HEC) endpoint of your Splunk environment, and determine if you would like to automatically generate the HEC tokens required. If you choose not to automatically generate HEC tokens in your Splunk environment, you will need to provide your manually generated, enabled Splunk HTTP Event Collector Tokens. See the `Manual Token Setup` section of this documentation.
 
 After you have entered in the details about your Splunk environment and/or made your data collection selections, download the customized template. You can now run this template in the AWS CloudFormation console, or through the AWS CLI.
 
@@ -55,7 +55,7 @@ If you prefer to use the AWS CLI, the below command will also deploy the templat
 $ aws cloudformation deploy --template-file customized_splunk_aws_template.json --stack-name "splunk-aws-automation" --capabilities CAPABILITY_IAM
 ```
 
-After 5-10 minutes, Splunk will begin receiving data from some of the configured AWS services. You should now delete the first stack - which deployed the configuration website. Do NOT delete the second stack unless you would like to stop sending AWS data to Splunk.
+After 5-10 minutes, Splunk will begin receiving data from some of the configured AWS services. Do NOT delete the CloudFormation stack unless you would like to stop sending AWS data to Splunk.
 
 ### Manual token setup
 Setting up the tokens required from the Splunk GUI is a straightforward process. You will need to create a pair of HEC tokens on the Splunk side (Depending on your Splunk architecture, this can be a deployment server, a Splunk instance acting as a forwarder, etc.).
