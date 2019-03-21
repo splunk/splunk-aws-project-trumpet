@@ -1,6 +1,6 @@
 <img src="README-static-assets/trumpet_logo.png" width="450">
 
-Trumpet is a tool that leverages AWS CloudFormation to set up all the AWS infrastructure needed to push AWS CloudTrail, AWS Config, and AWS GuardDuty data to Splunk using HTTP Event Collector (HEC). Once the template has been deployed, the user only needs the Splunk Add-on for AWS, Splunk Add-on for Amazon Kinesis Firehose and Splunk App for AWS installed on their Splunk environment in order to populate several of the dashboards included in the Splunk App for AWS with their data.
+Trumpet is a tool that leverages AWS CloudFormation to set up all the AWS infrastructure needed to push AWS CloudTrail, AWS Config, and AWS GuardDuty data to Splunk using HTTP Event Collector (HEC). Once the template has been deployed, the user only needs the Splunk Add-on for AWS and Splunk App for AWS installed on their Splunk environment in order to start analyzing AWS data in Splunk.
 
 Currently the following sourcetypes are supported by the automation templates:
 * ***aws:config***
@@ -27,7 +27,7 @@ Due to the significance of the changes, you may want to access the old version i
 You can find a summary of these changes in this repo's CHANGELOG.md file.
 
 ## To start using Trumpet
-Trumpet is provided as an HTML webpage that can be run locally in a web browser where you can customize the template to your requirements. Once configured, download the generated template and deploy it in the AWS regions you would like to collect data from.
+Trumpet is provided as an HTML webpage that can be run locally in a web browser where you can customize the downloadable CloudFormation template to your requirements. Once configured, download the generated template and deploy it in the AWS regions you would like to collect data from.
 
 ### 0. Splunk Prerequisites
 Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?) and the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876/) on the endpoint/s that will be receiving data using HTTP Event Collector.
@@ -93,6 +93,8 @@ $ aws configservice deliver-config-snapshot --delivery-channel-name default
 ```
 - Check CloudWatch logs for malfunctioning Lambdas.
 - If the `aws:config:notification` sourcetype is not being ingested as expected, check that the AWS Config recorder is turned on. The recorder should be turned on by the template, however if there is an existing recorder that is turned off when the template runs, the recorder will need to be turned on manually from the AWS Console or using the AWS CLI.
+- `{VPC OR CML}FlowLogSubscriptionFilter{LOG GROUP NAME} Resource limit exceeded.`
+    - This error means one of the provided log groups already has a subscription filter attached. CloudWatch log groups have a limit of (1) subscription filter, so the existing subscription filter must be removed, or the log group must be duplicated.
 - In progress...
 
 ## Hosting Trumpet
