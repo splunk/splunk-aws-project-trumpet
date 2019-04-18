@@ -2,6 +2,23 @@
 
 Trumpet is a tool that leverages AWS CloudFormation to set up all the AWS infrastructure needed to push AWS CloudTrail, AWS Config, and AWS GuardDuty data to Splunk using HTTP Event Collector (HEC). Once the template has been deployed, the user only needs the Splunk Add-on for AWS and Splunk App for AWS installed on their Splunk environment in order to start analyzing AWS data in Splunk.
 
+Table of contents
+=================
+   * [Supported Sourcetypes](#supported-sourcetypes)
+   * [Major Update](#major-update)
+   * [Using Trumpet](#to-start-using-trumpet)
+      * [Prerequisites](#0-splunk-prerequisites)
+      * [Configuration Webpage](#1-open-the-configuration-webpage)
+      * [Configuration Selection](#2-choose-your-preferences-using-the-configuration-site)
+      * [Template Deployment](#3-deploy-the-generated-custom-cloudformation-template)
+   * [Manual Token Setup](#manual-token-setup)
+   * [Troubleshooting](#troubleshooting)
+   * [Hosting Trumpet](#hosting-trumpet)
+   * [Support](#support)
+
+
+## Supported Sourcetypes
+
 Currently the following sourcetypes are supported by the automation templates:
 * ***aws:config***
 * ***aws:config:notification***
@@ -57,7 +74,7 @@ $ aws cloudformation deploy --template-file customized_splunk_aws_template.json 
 
 After 5-10 minutes, Splunk will begin receiving data from some of the configured AWS services. Do NOT delete the CloudFormation stack unless you would like to stop sending AWS data to Splunk.
 
-### Manual token setup
+## Manual token setup
 Setting up the tokens required from the Splunk GUI is a straightforward process. You will need to create a pair of HEC tokens on the Splunk side (Depending on your Splunk architecture, this can be a deployment server, a Splunk instance acting as a forwarder, etc.).
 
 If you select the aws:config sourcetype, you will need to create a HEC token with indexer acknowledgement turned off. All other sourcetypes will require a single HEC token with indexer acknowledgement turned on. Details about the specific configuration for these two tokens is detailed below.
