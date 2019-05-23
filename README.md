@@ -12,6 +12,7 @@ Table of contents
       * [Configuration Selection](#2-choose-your-preferences-using-the-configuration-site)
       * [Template Deployment](#3-deploy-the-generated-custom-cloudformation-template)
    * [Manual Token Setup](#manual-token-setup)
+   * [Splunk Cloud Compatibility](#splunk-cloud-compatibility)
    * [Troubleshooting](#troubleshooting)
    * [Hosting Trumpet](#hosting-trumpet)
    * [Support](#support)
@@ -91,6 +92,10 @@ If you select the aws:config sourcetype, you will need to create a HEC token wit
     * **Source type:** `Auomatic`
     * **Index:** selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros). Generally this should be `main`.
     * **App Context:** `splunk_httpinput (splunk_httpinput)`
+    
+## Splunk Cloud Compatibility
+This project is compatible with Splunk Cloud, however there is one significant consideration.
+Because of the Kinesis Firehose requirement for an endpoint with a valid certificate installed, you will need to request from Splunk Cloud Support a provisioned valid HEC endpoint with a valid SSL certificate alreadyinstalled. This endpoint can be requested with a Splunk Support ticket in the steps outlined [here](https://docs.splunk.com/Documentation/AddOns/released/Firehose/RequestFirehose).
 
 ## Troubleshooting
 - Check that all AWS services you wish to log, such as Config, GuardDuty, Macie, etc. are turned on. For CloudTrail, you will need to create a trail if one does not already exist.
