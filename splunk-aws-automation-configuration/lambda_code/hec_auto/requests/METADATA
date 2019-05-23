@@ -1,0 +1,18 @@
+# Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
+
+name: "requests"
+description: "Python HTTP Client"
+
+third_party {
+  url {
+    type: ARCHIVE
+    value: "https://pypi.python.org/packages/49/6f/183063f01aae1e025cf0130772b55848750a2f3a89bfa11b385b35d7329d/requests-2.10.0.tar.gz"
+  }
+  version: "2.10.0"
+  last_upgrade_date { year: 2016 month: 6 day: 29 }
+
+  # NOTE: The "local_modifications" field is entirely optional and may be
+  # removed if it's not useful for the package.
+  #     See go/thirdparty-metadata-local-modifications
+  local_modifications: "http://google3/third_party/py/requests/README.google?cl=126207267"
+}

@@ -1,5 +1,27 @@
             {
                 "AWSTemplateFormatVersion": "2010-09-09",
+                "Parameters": {
+                    "CloudWatchSplunkHttpEventCollectorToken": {
+                        "Type": "String",
+                        "Description": "The enabled HEC token on the Splunk environment for the aws:cloudwatch sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)"
+                    },
+                    "ConfigNotificationSplunkHttpEventCollectorToken": {
+                        "Type": "String",
+                        "Description": "The enabled HEC token on the Splunk environment for the aws:config:notification sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)"
+                    },
+                    "CloudTrailSplunkHttpEventCollectorToken": {
+                        "Type": "String",
+                        "Description": "The enabled HEC token on the Splunk environment for the aws:cloudtrail sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)"
+                    },
+                    "SplunkHttpEventCollectorURL": {
+                        "Type": "String",
+                        "Description": "The HEC endpoint server and port (default 8088) of the the Splunk environment which will receive AWS data. (format - https://server:port/services/collector)"
+                    },
+                    "ConfigSplunkHttpEventCollectorToken": {
+                        "Type": "String",
+                        "Description": "The enabled HEC token on the Splunk environment for the aws:config sourcetype. (format - 12345678-qwer-asdf-zxcv-123456789qwe)"
+                    }
+                },
                 "Description": "Template for AWS data ingest into Splunk using AWS Kinesis Firehose and AWS Lambda.",
                 "Mappings": {
                   "BucketMap": {
@@ -21,87 +43,13 @@
                   }
                 },
                 "Resources": {
-                    "LambdaHecAutomation": {
-                        "Type": "AWS::Lambda::Function",
-                        "Properties": {
-                          "Code": {
-                            "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                            "S3Key": "hec_auto_v0.2.zip"
-                          },
-                          "Handler": "index.handler",
-                          "Role": {
-                            "Fn::GetAtt": [
-                              "LambdaHecAutomationExecutionRole",
-                              "Arn"
-                            ]
-                          },
-                          "Runtime": "python2.7",
-                          "Timeout": "30"
-                        }
-                    },
-                    "LambdaHecAutomationExecutionRole": {
-                        "Type": "AWS::IAM::Role",
-                        "Properties": {
-                          "AssumeRolePolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                              {
-                                "Effect": "Allow",
-                                "Principal": {
-                                  "Service": [
-                                    "lambda.amazonaws.com"
-                                  ]
-                                },
-                                "Action": [
-                                  "sts:AssumeRole"
-                                ]
-                              }
-                            ]
-                          },
-                          "Path": "/",
-                          "Policies": [
-                            {
-                              "PolicyName": "root",
-                              "PolicyDocument": {
-                                "Version": "2012-10-17",
-                                "Statement": [
-                                  {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                      "logs:CreateLogGroup",
-                                      "logs:CreateLogStream",
-                                      "logs:PutLogEvents"
-                                    ],
-                                    "Resource": "arn:aws:logs:*:*:*"
-                                  }
-                                ]
-                              }
-                            }
-                          ]
-                        }
-                      },
-                    "CustomResourceHecAutomation": {
-                        "Type": "Custom::CustomResource",
-                        "Properties": {
-                            "ServiceToken": {
-                                "Fn::GetAtt": [
-                                    "LambdaHecAutomation",
-                                    "Arn"
-                                ]
-                            },
-                            "SplunkUser": "",
-                            "SplunkPassword": "",
-                            "SplunkHttpEventCollectorManagementURL": "",
-                            "AWSRegion": { "Ref" : "AWS::Region" }
-                        }
-                    },
                     "ConfigurationRecorderSanitizationLambdaExecutionRole": {
                         "Type": "AWS::IAM::Role",
                         "Properties": {
                             "Path": "/",
                             "Policies": [
                                 {
-                                    "PolicyName": "ConfigurationRecorderSanitizationLambdaExecutionRole",
+                                    "PolicyName": "root",
                                     "PolicyDocument": {
                                         "Version": "2012-10-17",
                                         "Statement": [
@@ -210,8 +158,12 @@
                             "MemorySize": 512,
                             "Environment": {
                                 "Variables": {
-                                    "SPLUNK_HEC_URL": "",
-                                    "SPLUNK_HEC_TOKEN": ""
+                                    "SPLUNK_HEC_URL": {
+                                        "Ref": "SplunkHttpEventCollectorURL"
+                                    },
+                                    "SPLUNK_HEC_TOKEN": {
+                                        "Ref": "ConfigSplunkHttpEventCollectorToken"
+                                    }
                                 }
                             },
                             "Handler": "index.handler",
@@ -221,7 +173,37 @@
                                     "Arn"
                                 ]
                             },
-                            "Timeout": 900,
+                            "Timeout": 300,
+                            "Runtime": "nodejs6.10"
+                        }
+                    },
+                    "BackingLambdaCloudWatchMetricsProcessor": {
+                        "Type": "AWS::Lambda::Function",
+                        "Properties": {
+                            "Code": {
+                              "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
+                              "S3Key": "splunk_metrics_poller.zip"
+                            },
+                            "Description": "Send CloudWatch Metrics to Splunk using HTTP event collector",
+                            "MemorySize": 512,
+                            "Environment": {
+                                "Variables": {
+                                    "SPLUNK_HEC_URL": {
+                                        "Ref": "SplunkHttpEventCollectorURL"
+                                    },
+                                    "SPLUNK_HEC_TOKEN": {
+                                        "Ref": "CloudWatchSplunkHttpEventCollectorToken"
+                                    }
+                                }
+                            },
+                            "Handler": "index.handler",
+                            "Role": {
+                                "Fn::GetAtt": [
+                                    "BackingLambdaExecutionRoleCloudWatchMetricsProcessor",
+                                    "Arn"
+                                ]
+                            },
+                            "Timeout": 300,
                             "Runtime": "nodejs6.10"
                         }
                     },
@@ -275,28 +257,2048 @@
                             }
                         }
                     },
-                    "CloudTrailEventRule": {
+                    "ConfigNotificationBackupS3Bucket": {
+                        "Type": "AWS::S3::Bucket",
+                        "Properties": {
+                            "VersioningConfiguration": {
+                                "Status": "Enabled"
+                            }
+                        }
+                    },
+                    "CodeStarEventRule": {
                         "Type": "AWS::Events::Rule",
                         "Properties": {
                             "EventPattern": {
-                              "detail-type": [
-                                "AWS API Call via CloudTrail",
-                                "AWS Console Sign In via CloudTrail"
-                              ]
+                                "source": [
+                                    "aws.codestar"
+                                  ],
+                                  "detail-type": [
+                                    "AWS API Call via CloudTrail"
+                                  ],
+                                  "detail": {
+                                      "eventSource": [
+                                          "codestar.amazonaws.com"
+                                      ]
+                                  }
                             },
                             "State": "ENABLED",
                             "Targets": [
                                 {
                                     "RoleArn": {
                                         "Fn::GetAtt": [
-                                            "CWEFirehoseDeliveryRole",
+                                            "CloudTrailFirehoseDeliveryRole",
                                             "Arn"
                                         ]
                                     },
                                     "Id": "splunk_cloudtrail_firehose_target",
-                                    "Arn":  { "Fn::GetAtt" : [ "CWEFirehoseDeliveryStream", "Arn" ] }
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
                                 }
                             ]
+                        }
+                    },
+                    "MigrationHubEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.migrationhub"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "migrationhub.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "AutoScalingEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.autoscaling"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "autoscaling.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudDirectoryEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.clouddirectory"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "clouddirectory.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudFormationEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.cloudformation"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "cloudformation.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudHSMEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.cloudhsm"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "cloudhsm.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudSearchEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.cloudsearch"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "cloudsearch.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudWatchEventsEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.events"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "events.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudWatchLogsEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.logs"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "logs.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CodeBuildEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.codebuild"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "codebuild.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CodeCommitEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.codecommit"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "codecommit.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CodeDeployEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.codedeploy"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "codedeploy.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CodePipelineEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.codepipeline"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "codepipeline.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CognitoUserPoolEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.cognito-idp"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "cognito-idp.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ConfigEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.config"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "config.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "DataPipelineEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.datapipeline"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "datapipeline.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "DatabaseMigrationServiceEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.dms"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "dms.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "DeviceFarmEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.devicefarm"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "devicefarm.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "DirectConnectEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.directconnect"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "directconnect.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "DirectoryServiceEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.ds"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "ds.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "DynamoDBEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.dynamodb"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "dynamodb.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "EC2EventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.ec2"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "ec2.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "EC2ContainerRegistryEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.ecr"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "ecr.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ECSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.ecs"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "ecs.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "SSMEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.ssm"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "ssm.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ElasticCacheEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.elasticache"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "elasticache.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ElasticBeanstalkEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.elasticbeanstalk"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "elasticbeanstalk.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "EFSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.elasticfilesystem"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "elasticfilesystem.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ELBEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.elasticloadbalancing"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "elasticloadbalancing.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ElasticMapReduceEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.elasticmapreduce"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "elasticmapreduce.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ElasticTranscoderEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.elastictranscoder"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "elastictranscoder.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "GuardDutyEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.guardduty"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "guardduty.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "InspectorEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.inspector"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "inspector.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ElasticsearchventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.es"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "es.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "GameLiftEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.gamelift"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "gamelift.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "GlacierEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.glacier"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "glacier.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "IoTEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.iot"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "iot.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "KMSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.kms"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "kms.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "KinesisEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.kinesis"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "kinesis.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "MonitoringEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.monitoring"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "monitoring.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "KinesisFirehoseEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.firehose"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "firehose.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "LambdaEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.lambda"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "lambda.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "MeteringMarketplaceEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.metering-marketplace"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "metering-marketplace.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "OpsWorksEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.opsworks"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "opsworks.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "OpsWorksCMEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.opsworks-cm"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "opsworks-cm.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "PollyEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.polly"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "polly.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "RedshiftEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.redshift"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "redshift.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "RDSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.rds"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "rds.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "SecretsManagerEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.secretsmanager"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "secretsmanager.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "STSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.sts"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "sts.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ServerMigrationServiceEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.sms"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "sms.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "ServiceCatalogEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.servicecatalog"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "servicecatalog.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "SESEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.ses"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "ses.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "SNSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.sns"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "sns.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "SQSEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.sqs"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "sqs.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "SWFEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.swf"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "swf.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "StepFunctionsEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.states"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "states.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "StorageGatewayEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.storagegateway"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "storagegateway.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "WAFRegionalEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.waf-regional"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "waf-regional.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "WAFEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.waf"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "waf.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "WorkDocsEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.workdocs"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "workdocs.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "WorkSpacesEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.workspaces"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "workspaces.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudTrailEventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "EventPattern": {
+                              "source": [
+                                "aws.cloudtrail"
+                              ],
+                              "detail-type": [
+                                "AWS API Call via CloudTrail"
+                              ],
+                              "detail": {
+                                "eventSource": [
+                                  "cloudtrail.amazonaws.com"
+                                ]
+                              }
+                            },
+                            "State": "ENABLED",
+                            "Targets": [
+                                {
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailFirehoseDeliveryRole",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "Id": "splunk_cloudtrail_firehose_target",
+                                    "Arn":  { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudTrailBackupS3Bucket": {
+                        "Type": "AWS::S3::Bucket",
+                        "Properties": {
+                            "VersioningConfiguration": {
+                                "Status": "Enabled"
+                            }
+                        }
+                    },
+                    "BackingLambdaExecutionRoleCloudWatchMetricsProcessor": {
+                        "Type": "AWS::IAM::Role",
+                        "Properties": {
+                            "Path": "/",
+                            "ManagedPolicyArns": [
+                                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                            ],
+                            "Policies": [
+                                {
+                                    "PolicyName": "BackingLambdaExecutionCloudWatchMetricsPolicy",
+                                    "PolicyDocument": {
+                                        "Version": "2012-10-17",
+                                        "Statement": [
+                                            {
+                                                "Action": [
+                                                    "logs:CreateLogGroup",
+                                                    "logs:CreateLogStream",
+                                                    "logs:PutLogEvents"
+                                                ],
+                                                "Resource": [
+                                                    "arn:aws:logs:*:*:*"
+                                                ],
+                                                "Effect": "Allow"
+                                            },
+                                            {
+                                                "Action": [
+                                                    "lambda:UpdateFunctionConfiguration"
+                                                ],
+                                                "Resource": [
+                                                    "*"
+                                                ],
+                                                "Effect": "Allow"
+                                            },
+                                            {
+                                                "Action": [
+                                                    "cloudwatch:GetMetricStatistics",
+                                                    "cloudwatch:ListMetrics"
+                                                ],
+                                                "Resource": [
+                                                    "*"
+                                                ],
+                                                "Effect": "Allow"
+                                            },
+                                            {
+                                                "Action": [
+                                                    "dynamodb:GetItem",
+                                                    "dynamodb:UpdateItem"
+                                                ],
+                                                "Resource": [
+                                                    "*"
+                                                ],
+                                                "Effect": "Allow"
+                                            }
+                                        ]
+                                    }
+                                }
+                            ],
+                            "AssumeRolePolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": [
+                                            "sts:AssumeRole"
+                                        ],
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "Service": [
+                                                "lambda.amazonaws.com"
+                                            ]
+                                        }
+                                    }
+                                ]
+                            }
                         }
                     },
                     "ConfigBucketConfiguration": {
@@ -350,6 +2352,132 @@
                                 ]
                             },
                             "Timeout": 300
+                        }
+                    },
+                    "EventRule": {
+                        "Type": "AWS::Events::Rule",
+                        "Properties": {
+                            "State": "ENABLED",
+                            "ScheduleExpression": "cron(4,9,14,19,24,29,34,39,44,49,54,59 * * * ? *)",
+                            "Description": "EventRule",
+                            "Targets": [
+                                {
+                                    "Id": "TargetFunctionMetricsPoller",
+                                    "Arn": {
+                                        "Fn::GetAtt": [
+                                            "BackingLambdaCloudWatchMetricsProcessor",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "CloudTrailFirehoseDeliveryPolicy": {
+                        "Type": "AWS::IAM::Policy",
+                        "Properties": {
+                            "PolicyName": "firehose_delivery_policy",
+                            "PolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": [
+                                            "firehose:PutRecord",
+                                            "firehose:PutRecordBatch"
+                                        ],
+                                        "Resource": [
+                                           { "Fn::GetAtt" : [ "CloudTrailFirehoseDeliveryStream", "Arn" ] }
+                                        ],
+                                        "Effect": "Allow"
+                                    }
+                                ]
+                            },
+                            "Roles": [
+                                {
+                                    "Ref": "CloudTrailFirehoseDeliveryRole"
+                                }
+                            ]
+                        }
+                    },
+                    "ConfigNotificationFirehoseDeliveryPolicy": {
+                        "Type": "AWS::IAM::Policy",
+                        "Properties": {
+                            "PolicyName": "firehose_delivery_policy",
+                            "PolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": [
+                                            "firehose:PutRecord",
+                                            "firehose:PutRecordBatch"
+                                        ],
+                                        "Resource": [
+                                            { "Fn::GetAtt" : [ "ConfigNotificationFirehoseDeliveryStream", "Arn" ] }
+                                        ],
+                                        "Effect": "Allow"
+                                    }
+                                ]
+                            },
+                            "Roles": [
+                                {
+                                    "Ref": "ConfigNotificationFirehoseDeliveryRole"
+                                }
+                            ]
+                        }
+                    },
+                    "ConfigNotificationFirehoseDeliveryStream": {
+                        "Type": "AWS::KinesisFirehose::DeliveryStream",
+                        "Properties": {
+                            "SplunkDestinationConfiguration": {
+                                "S3Configuration": {
+                                    "CompressionFormat": "UNCOMPRESSED",
+                                    "BucketARN": {
+                                        "Fn::GetAtt": [
+                                            "ConfigNotificationBackupS3Bucket",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "RoleARN": {
+                                        "Fn::GetAtt": [
+                                            "ConfigNotificationBackupS3Role",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "BufferingHints": {
+                                        "IntervalInSeconds": 300,
+                                        "SizeInMBs": 5
+                                    }
+                                },
+                                "HECEndpointType": "Raw",
+                                "HECToken": "SPLUNK_HEC_TOKEN",
+                                "HECAcknowledgmentTimeoutInSeconds": 180,
+                                "RetryOptions": {
+                                    "DurationInSeconds": 300
+                                },
+                                "HECEndpoint": "SPLUNK_HEC_URL",
+                                "S3BackupMode": "FailedEventsOnly",
+                                "ProcessingConfiguration": {
+                                    "Enabled": false
+                                }
+                            },
+                            "DeliveryStreamType": "DirectPut",
+                            "DeliveryStreamName": "splunk-config-notification-cwe-monitoring"
+                        }
+                    },
+                    "PermissionForEventsToInvokeLambda": {
+                        "Type": "AWS::Lambda::Permission",
+                        "Properties": {
+                            "Action": "lambda:InvokeFunction",
+                            "Principal": "events.amazonaws.com",
+                            "FunctionName": {
+                                "Ref": "BackingLambdaCloudWatchMetricsProcessor"
+                            },
+                            "SourceArn": {
+                                "Fn::GetAtt": [
+                                    "EventRule",
+                                    "Arn"
+                                ]
+                            }
                         }
                     },
                     "BackingLambdaExecutionConfigLogProcessor": {
@@ -484,59 +2612,118 @@
                                 {
                                     "RoleArn": {
                                         "Fn::GetAtt": [
-                                            "CWEFirehoseDeliveryRole",
+                                            "ConfigNotificationFirehoseDeliveryRole",
                                             "Arn"
                                         ]
                                     },
                                     "Id": "splunk_config_notification_firehose_target",
-                                    "Arn":  { "Fn::GetAtt" : [ "CWEFirehoseDeliveryStream", "Arn" ] }
+                                    "Arn":  { "Fn::GetAtt" : [ "ConfigNotificationFirehoseDeliveryStream", "Arn" ] }
                                 }
                             ]
                         }
                     },
-                  "CWEFirehoseProcessor": {
-                        "Type": "AWS::Lambda::Function",
+                    "CloudTrailFirehoseDeliveryRole": {
+                        "Type": "AWS::IAM::Role",
                         "Properties": {
-                            "Code": {
-                              "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "splunk_cwe_firehose_processor.zip"
-                            },
-                            "Description": "Stream events from CloudWatch Events to Splunk using HTTP event collector",
-                            "MemorySize": 512,
-                            "Handler": "lambda_function.handler",
-                            "Role": {
-                                "Fn::GetAtt": [
-                                    "CWEFirehoseProcessorRole",
-                                    "Arn"
+                            "AssumeRolePolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": "sts:AssumeRole",
+                                        "Sid": "",
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "Service": "events.amazonaws.com"
+                                        }
+                                    }
                                 ]
-                            },
-                            "Timeout": 300,
-                            "Runtime": "python2.7"
+                            }
                         }
                     },
-                    "CWEFindingEventRule": {
+                    "CloudTrailBackupS3Role": {
+                        "Type": "AWS::IAM::Role",
+                        "Properties": {
+                            "Path": "/",
+                            "Policies": [
+                                {
+                                    "PolicyName": "root",
+                                    "PolicyDocument": {
+                                        "Version": "2012-10-17",
+                                        "Statement": [
+                                            {
+                                                "Action": [
+                                                    "s3:AbortMultipartUpload",
+                                                    "s3:GetBucketLocation",
+                                                    "s3:GetObject",
+                                                    "s3:ListBucket",
+                                                    "s3:ListBucketMultipartUploads",
+                                                    "s3:PutObject"
+                                                ],
+                                                "Resource": [
+                                                    {
+                                                        "Fn::GetAtt": [
+                                                            "CloudTrailBackupS3Bucket",
+                                                            "Arn"
+                                                        ]
+                                                    }
+                                                ],
+                                                "Effect": "Allow"
+                                            },
+                                            {
+                                                "Action": [
+                                                    "logs:CreateLogGroup",
+                                                    "logs:CreateLogStream",
+                                                    "logs:PutLogEvents"
+                                                ],
+                                                "Resource": "*",
+                                                "Effect": "Allow"
+                                            }
+                                        ]
+                                    }
+                                }
+                            ],
+                            "AssumeRolePolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": "sts:AssumeRole",
+                                        "Sid": "",
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "Service": "firehose.amazonaws.com"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "GuardDutyFindingEventRule": {
                           "Type": "AWS::Events::Rule",
                           "Properties": {
                               "EventPattern": {
-                                "source": [],
-                                "detail-type": []
+                                "source": [
+                                  "aws.guardduty"
+                                ],
+                                "detail-type": [
+                                  "GuardDuty Finding"
+                                ]
                               },
                               "State": "ENABLED",
                               "Targets": [
                                   {
                                       "RoleArn": {
                                           "Fn::GetAtt": [
-                                              "CWEFirehoseDeliveryRole",
+                                              "GuardDutyFirehoseDeliveryRole",
                                               "Arn"
                                           ]
                                       },
-                                      "Id": "splunk_cwe_firehose_target",
-                                      "Arn":  { "Fn::GetAtt" : [ "CWEFirehoseDeliveryStream", "Arn" ] }
+                                      "Id": "splunk_guardduty_notification_firehose_target",
+                                      "Arn":  { "Fn::GetAtt" : [ "GuardDutyFirehoseDeliveryStream", "Arn" ] }
                                   }
                               ]
                           }
                       },
-                    "CWEFirehoseDeliveryStream": {
+                    "GuardDutyFirehoseDeliveryStream": {
                           "Type": "AWS::KinesisFirehose::DeliveryStream",
                           "Properties": {
                               "SplunkDestinationConfiguration": {
@@ -544,22 +2731,22 @@
                                       "CompressionFormat": "UNCOMPRESSED",
                                       "BucketARN": {
                                           "Fn::GetAtt": [
-                                              "CWEBackupS3Bucket",
+                                              "GuardDutyBackupS3Bucket",
                                               "Arn"
                                           ]
                                       },
                                       "RoleARN": {
                                           "Fn::GetAtt": [
-                                              "CWEBackupS3Role",
+                                              "GuardDutyBackupS3Role",
                                               "Arn"
                                           ]
                                       },
                                       "BufferingHints": {
                                           "IntervalInSeconds": 300,
-                                          "SizeInMBs": 1
+                                          "SizeInMBs": 5
                                       }
                                   },
-                                  "HECEndpointType": "Event",
+                                  "HECEndpointType": "Raw",
                                   "HECToken": "SPLUNK_HEC_TOKEN",
                                   "HECAcknowledgmentTimeoutInSeconds": 180,
                                   "RetryOptions": {
@@ -568,23 +2755,14 @@
                                   "HECEndpoint": "SPLUNK_HEC_URL",
                                   "S3BackupMode": "FailedEventsOnly",
                                   "ProcessingConfiguration": {
-                                      "Enabled": true,
-                                      "Processors": [{
-                                          "Parameters" : [{
-                                            "ParameterName": "LambdaArn",
-                                            "ParameterValue": { "Fn::GetAtt" : [ "CWEFirehoseProcessor", "Arn" ] }
-                                          }, {
-                                            "ParameterName": "RoleArn",
-                                            "ParameterValue": { "Fn::GetAtt" : [ "CWEBackupS3Role", "Arn" ] }
-                                            }],
-                                          "Type" : "Lambda"
-                                      }]
+                                      "Enabled": false
                                   }
                               },
-                              "DeliveryStreamType": "DirectPut"
+                              "DeliveryStreamType": "DirectPut",
+                              "DeliveryStreamName": "splunk-guardduty-cwe-monitoring"
                           }
                       },
-                       "CWEFirehoseDeliveryRole": {
+                       "GuardDutyFirehoseDeliveryRole": {
                             "Type": "AWS::IAM::Role",
                             "Properties": {
                                 "AssumeRolePolicyDocument": {
@@ -602,7 +2780,7 @@
                                 }
                             }
                         },
-                      "CWEFirehoseDeliveryPolicy": {
+                      "GuardDutyFirehoseDeliveryPolicy": {
                           "Type": "AWS::IAM::Policy",
                           "Properties": {
                               "PolicyName": "firehose_delivery_policy",
@@ -615,7 +2793,7 @@
                                               "firehose:PutRecordBatch"
                                           ],
                                           "Resource": [
-                                              { "Fn::GetAtt" : [ "CWEFirehoseDeliveryStream", "Arn" ] }
+                                              { "Fn::GetAtt" : [ "GuardDutyFirehoseDeliveryStream", "Arn" ] }
                                           ],
                                           "Effect": "Allow"
                                       }
@@ -623,12 +2801,12 @@
                               },
                               "Roles": [
                                   {
-                                      "Ref": "CWEFirehoseDeliveryRole"
+                                      "Ref": "GuardDutyFirehoseDeliveryRole"
                                   }
                               ]
                           }
                       },
-                      "CWEBackupS3Bucket": {
+                      "GuardDutyBackupS3Bucket": {
                             "Type": "AWS::S3::Bucket",
                             "Properties": {
                                 "VersioningConfiguration": {
@@ -636,644 +2814,13 @@
                                 }
                             }
                         },
-                      "CWEBackupS3Role": {
-                          "Type": "AWS::IAM::Role",
-                          "Properties": {
-                              "Path": "/",
-                              "Policies": [
-                                {
-                                  "PolicyName": "CWEBackupS3Role",
-                                  "PolicyDocument": {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "glue:GetTableVersions"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "s3:AbortMultipartUpload",
-                                          "s3:GetBucketLocation",
-                                          "s3:GetObject",
-                                          "s3:ListBucket",
-                                          "s3:ListBucketMultipartUploads",
-                                          "s3:PutObject"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "lambda:InvokeFunction",
-                                          "lambda:GetFunctionConfiguration"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "logs:CreateLogGroup",
-                                          "logs:CreateLogStream",
-                                          "logs:PutLogEvents"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "kinesis:DescribeStream",
-                                          "kinesis:GetShardIterator",
-                                          "kinesis:GetRecords"
-                                        ],
-                                        "Resource": "arn:aws:kinesis:us-west-2:112543817624:stream/%FIREHOSE_STREAM_NAME%"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "kms:Decrypt"
-                                        ],
-                                        "Resource": [
-                                          "arn:aws:kms:region:accountid:key/%SSE_KEY_ARN%"
-                                        ],
-                                        "Condition": {
-                                          "StringEquals": {
-                                            "kms:ViaService": "kinesis.%REGION_NAME%.amazonaws.com"
-                                          },
-                                          "StringLike": {
-                                            "kms:EncryptionContext:aws:kinesis:arn": "arn:aws:kinesis:%REGION_NAME%:112543817624:stream/%FIREHOSE_STREAM_NAME%"
-                                          }
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              ],
-                              "AssumeRolePolicyDocument": {
-                                  "Version": "2012-10-17",
-                                  "Statement": [
-                                      {
-                                          "Action": "sts:AssumeRole",
-                                          "Sid": "",
-                                          "Effect": "Allow",
-                                          "Principal": {
-                                              "Service": "firehose.amazonaws.com"
-                                          }
-                                      }
-                                  ]
-                              }
-                          }
-                    },
-                  "CWEFirehoseProcessorRole": {
-                        "Type": "AWS::IAM::Role",
-                        "Properties": {
-                            "Path": "/",
-                            "ManagedPolicyArns": [
-                                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                            ],
-                            "Policies": [
-                                {
-                                    "PolicyName": "CWEFirehoseProcessorPolicy",
-                                    "PolicyDocument": {
-                                       "Version":"2012-10-17",
-                                       "Statement":[
-                                          {
-                                              "Effect": "Allow",
-                                              "Action": [
-                                                  "lambda:InvokeFunction"
-                                              ],
-                                              "Resource": [
-                                                  "*"
-                                              ]
-                                          },
-                                          {
-                                              "Effect": "Allow",
-                                              "Action": [
-                                                  "kinesis:GetRecords",
-                                                  "kinesis:GetShardIterator",
-                                                  "kinesis:DescribeStream",
-                                                  "kinesis:ListStreams",
-                                                  "logs:CreateLogGroup",
-                                                  "logs:CreateLogStream",
-                                                  "logs:PutLogEvents"
-                                              ],
-                                              "Resource": "*"
-                                          }
-                                       ]
-                                    }
-                                }
-                            ],
-                            "AssumeRolePolicyDocument": {
-                                "Version": "2012-10-17",
-                                "Statement": [
-                                    {
-                                        "Action": [
-                                            "sts:AssumeRole"
-                                        ],
-                                        "Effect": "Allow",
-                                        "Principal": {
-                                            "Service": [
-                                                "lambda.amazonaws.com"
-                                            ]
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "CWLFirehoseProcessor": {
-                        "Type": "AWS::Lambda::Function",
-                        "Properties": {
-                            "Code": {
-                              "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "splunk_cwl_firehose_processor.zip"
-                            },
-                            "Description": "Stream events from CLoudWatch Logs to Splunk using HTTP event collector",
-                            "MemorySize": 512,
-                            "Handler": "lambda_function.handler",
-                            "Role": {
-                                "Fn::GetAtt": [
-                                    "CWLFirehoseProcessorRole",
-                                    "Arn"
-                                ]
-                            },
-                            "Timeout": 300,
-                            "Runtime": "python2.7"
-                        }
-                    },
-                    "CWLtoKinesisFirehoseRole": {
-                        "Type": "AWS::IAM::Role",
-                        "Properties": {
-                            "Policies": [
-                                {
-                                    "PolicyName": "CWLtoKinesisFirehosePolicy",
-                                    "PolicyDocument": {
-                                        "Version":"2012-10-17",
-                                        "Statement":[
-                                          {
-                                            "Effect":"Allow",
-                                            "Action":["firehose:*"],
-                                            "Resource":["arn:aws:firehose:*:*:*"]
-                                          },
-                                          {
-                                            "Effect":"Allow",
-                                            "Action":["iam:PassRole"],
-                                            "Resource":["arn:aws:iam::*:role/CWLtoKinesisFirehoseRole"]
-                                          }
-                                        ]
-                                    }
-                                }
-                            ],
-                            "AssumeRolePolicyDocument": {
-                                "Version": "2012-10-17",
-                                "Statement": {
-                                    "Action": "sts:AssumeRole",
-                                    "Effect": "Allow",
-                                    "Principal": {
-                                        "Service": {
-                                            "Fn::Join": [
-                                              "",
-                                              [
-                                                "logs.",
-                                                {
-                                                  "Ref": "AWS::Region"
-                                                },
-                                                ".amazonaws.com"
-                                              ]
-                                            ]
-                                          }
-                                      }
-                                }
-                            }
-                          }
-                    },
-                    "CWLFlowLogSubscriptionFilter" : {
-                      "Type" : "AWS::Logs::SubscriptionFilter",
-                      "Properties" : {
-                        "RoleArn" : { "Fn::GetAtt" : [ "CWLtoKinesisFirehoseRole", "Arn" ] },
-                        "LogGroupName" : "placeholder",
-                        "FilterPattern" : "",
-                        "DestinationArn" : { "Fn::GetAtt" : [ "CWLFirehoseDeliveryStream", "Arn" ] }
-                      }
-                    },
-                    "CWLFirehoseDeliveryStream": {
-                          "Type": "AWS::KinesisFirehose::DeliveryStream",
-                          "Properties": {
-                              "SplunkDestinationConfiguration": {
-                                  "S3Configuration": {
-                                      "CompressionFormat": "UNCOMPRESSED",
-                                      "BucketARN": {
-                                          "Fn::GetAtt": [
-                                              "CWLBackupS3Bucket",
-                                              "Arn"
-                                          ]
-                                      },
-                                      "RoleARN": {
-                                          "Fn::GetAtt": [
-                                              "CWLBackupS3Role",
-                                              "Arn"
-                                          ]
-                                      },
-                                      "BufferingHints": {
-                                          "IntervalInSeconds": 300,
-                                          "SizeInMBs": 1
-                                      }
-                                  },
-                                  "HECEndpointType": "Event",
-                                  "HECToken": "SPLUNK_HEC_TOKEN",
-                                  "HECAcknowledgmentTimeoutInSeconds": 180,
-                                  "RetryOptions": {
-                                      "DurationInSeconds": 300
-                                  },
-                                  "HECEndpoint": "SPLUNK_HEC_URL",
-                                  "S3BackupMode": "FailedEventsOnly",
-                                  "ProcessingConfiguration": {
-                                      "Enabled": true,
-                                      "Processors": [{
-                                          "Parameters" : [{
-                                            "ParameterName": "LambdaArn",
-                                            "ParameterValue": { "Fn::GetAtt" : [ "CWLFirehoseProcessor", "Arn" ] }
-                                          }, {
-                                            "ParameterName": "RoleArn",
-                                            "ParameterValue": { "Fn::GetAtt" : [ "CWLBackupS3Role", "Arn" ] }
-                                            }],
-                                          "Type" : "Lambda"
-                                      }]
-                                  }
-                              },
-                              "DeliveryStreamType": "DirectPut"
-                          }
-                      },
-                       "CWLFirehoseDeliveryRole": {
-                            "Type": "AWS::IAM::Role",
-                            "Properties": {
-                                "AssumeRolePolicyDocument": {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Action": "sts:AssumeRole",
-                                            "Sid": "",
-                                            "Effect": "Allow",
-                                            "Principal": {
-                                                "Service": "events.amazonaws.com"
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        },
-                      "CWLFirehoseDeliveryPolicy": {
-                          "Type": "AWS::IAM::Policy",
-                          "Properties": {
-                              "PolicyName": "firehose_delivery_policy",
-                              "PolicyDocument": {
-                                  "Version": "2012-10-17",
-                                  "Statement": [
-                                      {
-                                          "Action": [
-                                              "firehose:PutRecord",
-                                              "firehose:PutRecordBatch"
-                                          ],
-                                          "Resource": [
-                                              { "Fn::GetAtt" : [ "CWLFirehoseDeliveryStream", "Arn" ] }
-                                          ],
-                                          "Effect": "Allow"
-                                      }
-                                  ]
-                              },
-                              "Roles": [
-                                  {
-                                      "Ref": "CWLFirehoseDeliveryRole"
-                                  }
-                              ]
-                          }
-                      },
-                      "CWLBackupS3Bucket": {
-                            "Type": "AWS::S3::Bucket",
-                            "Properties": {
-                                "VersioningConfiguration": {
-                                    "Status": "Enabled"
-                                }
-                            }
-                        },
-                      "CWLBackupS3Role": {
-                          "Type": "AWS::IAM::Role",
-                          "Properties": {
-                              "Path": "/",
-                              "Policies": [
-                                {
-                                  "PolicyName": "CWLBackupS3Role",
-                                  "PolicyDocument": {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "glue:GetTableVersions"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "s3:AbortMultipartUpload",
-                                          "s3:GetBucketLocation",
-                                          "s3:GetObject",
-                                          "s3:ListBucket",
-                                          "s3:ListBucketMultipartUploads",
-                                          "s3:PutObject"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "lambda:InvokeFunction",
-                                          "lambda:GetFunctionConfiguration"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "logs:CreateLogGroup",
-                                          "logs:CreateLogStream",
-                                          "logs:PutLogEvents"
-                                        ],
-                                        "Resource": "*"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "kinesis:DescribeStream",
-                                          "kinesis:GetShardIterator",
-                                          "kinesis:GetRecords"
-                                        ],
-                                        "Resource": "arn:aws:kinesis:us-west-2:112543817624:stream/%FIREHOSE_STREAM_NAME%"
-                                      },
-                                      {
-                                        "Sid": "",
-                                        "Effect": "Allow",
-                                        "Action": [
-                                          "kms:Decrypt"
-                                        ],
-                                        "Resource": [
-                                          "arn:aws:kms:region:accountid:key/%SSE_KEY_ARN%"
-                                        ],
-                                        "Condition": {
-                                          "StringEquals": {
-                                            "kms:ViaService": "kinesis.%REGION_NAME%.amazonaws.com"
-                                          },
-                                          "StringLike": {
-                                            "kms:EncryptionContext:aws:kinesis:arn": "arn:aws:kinesis:%REGION_NAME%:112543817624:stream/%FIREHOSE_STREAM_NAME%"
-                                          }
-                                        }
-                                      }
-                                    ]
-                                  }
-                                }
-                              ],
-                              "AssumeRolePolicyDocument": {
-                                  "Version": "2012-10-17",
-                                  "Statement": [
-                                      {
-                                          "Action": "sts:AssumeRole",
-                                          "Sid": "",
-                                          "Effect": "Allow",
-                                          "Principal": {
-                                              "Service": "firehose.amazonaws.com"
-                                          }
-                                      }
-                                  ]
-                              }
-                          }
-                    },
-                  "CWLFirehoseProcessorRole": {
-                        "Type": "AWS::IAM::Role",
-                        "Properties": {
-                            "Path": "/",
-                            "ManagedPolicyArns": [
-                                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                            ],
-                            "Policies": [
-                                {
-                                    "PolicyName": "CWLFirehoseProcessorPolicy",
-                                    "PolicyDocument": {
-                                       "Version":"2012-10-17",
-                                       "Statement":[
-                                          {
-                                             "Effect":"Allow",
-                                             "Action":"logs:CreateLogGroup",
-                                             "Resource":"arn:aws:logs:*:*:*"
-                                          },
-                                          {
-                                             "Effect":"Allow",
-                                             "Action":[
-                                                "logs:CreateLogStream",
-                                                "logs:PutLogEvents"
-                                             ],
-                                             "Resource":[
-                                                "arn:aws:logs:*:*:*:*:*"
-                                             ]
-                                          }
-                                       ]
-                                    }
-                                }
-                            ],
-                            "AssumeRolePolicyDocument": {
-                                "Version": "2012-10-17",
-                                "Statement": [
-                                    {
-                                        "Action": [
-                                            "sts:AssumeRole"
-                                        ],
-                                        "Effect": "Allow",
-                                        "Principal": {
-                                            "Service": [
-                                                "lambda.amazonaws.com"
-                                            ]
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "VPCtoKinesisFirehoseRole": {
-                          "Type": "AWS::IAM::Role",
-                          "Properties": {
-                              "Policies": [
-                                  {
-                                      "PolicyName": "VPCtoKinesisFirehosePolicy",
-                                      "PolicyDocument": {
-                                         "Version":"2012-10-17",
-                                         "Statement":[
-                                          {
-                                            "Effect":"Allow",
-                                            "Action":["firehose:*"],
-                                            "Resource":["arn:aws:firehose:*:*:*"]
-                                          },
-                                          {
-                                            "Effect":"Allow",
-                                            "Action":["iam:PassRole"],
-                                            "Resource":["arn:aws:iam::*:role/VPCtoKinesisFirehoseRole"]
-                                          }
-                                        ]
-                                      }
-                                  }
-                              ],
-                              "AssumeRolePolicyDocument": {
-                                  "Version": "2012-10-17",
-                                  "Statement": {
-                                      "Action": "sts:AssumeRole",
-                                      "Effect": "Allow",
-                                      "Principal": {
-                                          "Service": {
-                                            "Fn::Join": [
-                                              "",
-                                              [
-                                                "logs.",
-                                                {
-                                                  "Ref": "AWS::Region"
-                                                },
-                                                ".amazonaws.com"
-                                              ]
-                                            ]
-                                          }
-                                      }
-                                  }
-                              }
-                          }
-                      },
-                    "VPCFlowLogSubscriptionFilter" : {
-                      "Type" : "AWS::Logs::SubscriptionFilter",
-                      "Properties" : {
-                        "RoleArn" : { "Fn::GetAtt" : [ "VPCtoKinesisFirehoseRole", "Arn" ] },
-                        "LogGroupName" : "placeholder",
-                        "FilterPattern" : "",
-                        "DestinationArn" : { "Fn::GetAtt" : [ "VPCFirehoseDeliveryStream", "Arn" ] }
-                      }
-                    },
-                    "VPCFirehoseDeliveryStream": {
-                          "Type": "AWS::KinesisFirehose::DeliveryStream",
-                          "Properties": {
-                              "SplunkDestinationConfiguration": {
-                                  "S3Configuration": {
-                                      "CompressionFormat": "UNCOMPRESSED",
-                                      "BucketARN": {
-                                          "Fn::GetAtt": [
-                                              "VPCBackupS3Bucket",
-                                              "Arn"
-                                          ]
-                                      },
-                                      "RoleARN": {
-                                          "Fn::GetAtt": [
-                                              "VPCBackupS3Role",
-                                              "Arn"
-                                          ]
-                                      },
-                                      "BufferingHints": {
-                                          "IntervalInSeconds": 300,
-                                          "SizeInMBs": 1
-                                      }
-                                  },
-                                  "HECEndpointType": "Event",
-                                  "HECToken": "SPLUNK_HEC_TOKEN",
-                                  "HECAcknowledgmentTimeoutInSeconds": 180,
-                                  "RetryOptions": {
-                                      "DurationInSeconds": 300
-                                  },
-                                  "HECEndpoint": "SPLUNK_HEC_URL",
-                                  "S3BackupMode": "FailedEventsOnly",
-                                  "ProcessingConfiguration": {
-                                      "Enabled": true,
-                                      "Processors": [{
-                                          "Parameters" : [{
-                                            "ParameterName": "LambdaArn",
-                                            "ParameterValue": { "Fn::GetAtt" : [ "VPCFirehoseProcessor", "Arn" ] }
-                                          }, {
-                                            "ParameterName": "RoleArn",
-                                            "ParameterValue": { "Fn::GetAtt" : [ "VPCBackupS3Role", "Arn" ] }
-                                            }],
-                                          "Type" : "Lambda"
-                                      }]
-                                  }
-                              },
-                              "DeliveryStreamType": "DirectPut"
-                          }
-                      },
-                       "VPCFirehoseDeliveryRole": {
-                            "Type": "AWS::IAM::Role",
-                            "Properties": {
-                                "AssumeRolePolicyDocument": {
-                                    "Version": "2012-10-17",
-                                    "Statement": [
-                                        {
-                                            "Action": "sts:AssumeRole",
-                                            "Sid": "",
-                                            "Effect": "Allow",
-                                            "Principal": {
-                                                "Service": "events.amazonaws.com"
-                                            }
-                                        }
-                                    ]
-                                }
-                            }
-                        },
-                      "VPCFirehoseDeliveryPolicy": {
-                          "Type": "AWS::IAM::Policy",
-                          "Properties": {
-                              "PolicyName": "firehose_delivery_policy",
-                              "PolicyDocument": {
-                                  "Version": "2012-10-17",
-                                  "Statement": [
-                                      {
-                                          "Action": [
-                                              "firehose:PutRecord",
-                                              "firehose:PutRecordBatch"
-                                          ],
-                                          "Resource": [
-                                              { "Fn::GetAtt" : [ "VPCFirehoseDeliveryStream", "Arn" ] }
-                                          ],
-                                          "Effect": "Allow"
-                                      }
-                                  ]
-                              },
-                              "Roles": [
-                                  {
-                                      "Ref": "VPCFirehoseDeliveryRole"
-                                  }
-                              ]
-                          }
-                      },
-                      "VPCBackupS3Bucket": {
-                            "Type": "AWS::S3::Bucket",
-                            "Properties": {
-                                "VersioningConfiguration": {
-                                    "Status": "Enabled"
-                                }
-                            }
-                        },
-                      "VPCBackupS3Role": {
+                      "GuardDutyBackupS3Role": {
                           "Type": "AWS::IAM::Role",
                           "Properties": {
                               "Path": "/",
                               "Policies": [
                                   {
-                                      "PolicyName": "VPCBackupS3Role",
+                                      "PolicyName": "root",
                                       "PolicyDocument": {
                                           "Version": "2012-10-17",
                                           "Statement": [
@@ -1286,16 +2833,15 @@
                                                       "s3:ListBucketMultipartUploads",
                                                       "s3:PutObject"
                                                   ],
-                                                  "Resource": "*",
-                                                  "Effect": "Allow"
-                                              },
-                                            {
-                                                  "Effect": "Allow",
-                                                  "Action": [
-                                                      "lambda:InvokeFunction",
-                                                      "lambda:GetFunctionConfiguration"
+                                                  "Resource": [
+                                                      {
+                                                          "Fn::GetAtt": [
+                                                              "GuardDutyBackupS3Bucket",
+                                                              "Arn"
+                                                          ]
+                                                      }
                                                   ],
-                                                  "Resource": "*"
+                                                  "Effect": "Allow"
                                               },
                                               {
                                                   "Action": [
@@ -1325,74 +2871,43 @@
                               }
                           }
                     },
-                  "VPCFirehoseProcessorRole": {
-                        "Type": "AWS::IAM::Role",
+                    "CloudTrailFirehoseDeliveryStream": {
+                        "Type": "AWS::KinesisFirehose::DeliveryStream",
                         "Properties": {
-                            "Path": "/",
-                            "ManagedPolicyArns": [
-                                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                            ],
-                            "Policies": [
-                                {
-                                    "PolicyName": "VPCFirehoseProcessorPolicy",
-                                    "PolicyDocument": {
-                                       "Version":"2012-10-17",
-                                       "Statement":[
-                                          {
-                                             "Effect":"Allow",
-                                             "Action":"logs:CreateLogGroup",
-                                             "Resource":"arn:aws:logs:*:*:*"
-                                          },
-                                          {
-                                             "Effect":"Allow",
-                                             "Action":[
-                                                "logs:CreateLogStream",
-                                                "logs:PutLogEvents"
-                                             ],
-                                             "Resource":[
-                                                "arn:aws:logs:*:*:*:*:*"
-                                             ]
-                                          }
-                                       ]
+                            "SplunkDestinationConfiguration": {
+                                "S3Configuration": {
+                                    "CompressionFormat": "UNCOMPRESSED",
+                                    "BucketARN": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailBackupS3Bucket",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "RoleARN": {
+                                        "Fn::GetAtt": [
+                                            "CloudTrailBackupS3Role",
+                                            "Arn"
+                                        ]
+                                    },
+                                    "BufferingHints": {
+                                        "IntervalInSeconds": 300,
+                                        "SizeInMBs": 5
                                     }
+                                },
+                                "HECEndpointType": "Raw",
+                                "HECToken": "SPLUNK_HEC_TOKEN",
+                                "HECAcknowledgmentTimeoutInSeconds": 180,
+                                "RetryOptions": {
+                                    "DurationInSeconds": 300
+                                },
+                                "HECEndpoint": "SPLUNK_HEC_URL",
+                                "S3BackupMode": "FailedEventsOnly",
+                                "ProcessingConfiguration": {
+                                    "Enabled": false
                                 }
-                            ],
-                            "AssumeRolePolicyDocument": {
-                                "Version": "2012-10-17",
-                                "Statement": [
-                                    {
-                                        "Action": [
-                                            "sts:AssumeRole"
-                                        ],
-                                        "Effect": "Allow",
-                                        "Principal": {
-                                            "Service": [
-                                                "lambda.amazonaws.com"
-                                            ]
-                                        }
-                                    }
-                                ]
-                            }
-                        }
-                    },
-                    "VPCFirehoseProcessor": {
-                        "Type": "AWS::Lambda::Function",
-                        "Properties": {
-                            "Code": {
-                              "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
-                              "S3Key": "splunk_vpc_firehose_processor.zip"
                             },
-                            "Description": "Stream events from VPC Flow Logs to Splunk using HTTP event collector",
-                            "MemorySize": 512,
-                            "Handler": "lambda_function.handler",
-                            "Role": {
-                                "Fn::GetAtt": [
-                                    "VPCFirehoseProcessorRole",
-                                    "Arn"
-                                ]
-                            },
-                            "Timeout": 300,
-                            "Runtime": "python2.7"
+                            "DeliveryStreamType": "DirectPut",
+                            "DeliveryStreamName": "splunk-cloudtrail-cwe-monitoring"
                         }
                     },
                     "ConfigRole": {
@@ -1475,6 +2990,46 @@
                             }
                         }
                     },
+                    "TrumpetDynamoDBTable": {
+                        "Type": "AWS::DynamoDB::Table",
+                        "Properties": {
+                            "KeySchema": [
+                                {
+                                    "KeyType": "HASH",
+                                    "AttributeName": "metric_dimension"
+                                }
+                            ],
+                            "TableName": "splunk_metrics_highwater",
+                            "AttributeDefinitions": [
+                                {
+                                    "AttributeName": "metric_dimension",
+                                    "AttributeType": "S"
+                                }
+                            ],
+                            "ProvisionedThroughput": {
+                                "WriteCapacityUnits": "100",
+                                "ReadCapacityUnits": "100"
+                            }
+                        }
+                    },
+                    "ConfigNotificationFirehoseDeliveryRole": {
+                        "Type": "AWS::IAM::Role",
+                        "Properties": {
+                            "AssumeRolePolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": "sts:AssumeRole",
+                                        "Sid": "",
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "Service": "events.amazonaws.com"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
                     "BackingLambdaExecutionConfigLogProcessorRole": {
                         "Type": "AWS::IAM::Role",
                         "Properties": {
@@ -1530,6 +3085,63 @@
                                             "Service": [
                                                 "lambda.amazonaws.com"
                                             ]
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "ConfigNotificationBackupS3Role": {
+                        "Type": "AWS::IAM::Role",
+                        "Properties": {
+                            "Path": "/",
+                            "Policies": [
+                                {
+                                    "PolicyName": "root",
+                                    "PolicyDocument": {
+                                        "Version": "2012-10-17",
+                                        "Statement": [
+                                            {
+                                                "Action": [
+                                                    "s3:AbortMultipartUpload",
+                                                    "s3:GetBucketLocation",
+                                                    "s3:GetObject",
+                                                    "s3:ListBucket",
+                                                    "s3:ListBucketMultipartUploads",
+                                                    "s3:PutObject"
+                                                ],
+                                                "Resource": [
+                                                    {
+                                                        "Fn::GetAtt": [
+                                                            "ConfigNotificationBackupS3Bucket",
+                                                            "Arn"
+                                                        ]
+                                                    }
+                                                ],
+                                                "Effect": "Allow"
+                                            },
+                                            {
+                                                "Action": [
+                                                    "logs:CreateLogGroup",
+                                                    "logs:CreateLogStream",
+                                                    "logs:PutLogEvents"
+                                                ],
+                                                "Resource": "*",
+                                                "Effect": "Allow"
+                                            }
+                                        ]
+                                    }
+                                }
+                            ],
+                            "AssumeRolePolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Action": "sts:AssumeRole",
+                                        "Sid": "",
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "Service": "firehose.amazonaws.com"
                                         }
                                     }
                                 ]
