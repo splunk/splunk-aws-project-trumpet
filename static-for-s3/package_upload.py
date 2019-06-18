@@ -27,13 +27,16 @@ automation_configuration_path_base = '../splunk-aws-automation-configuration/lam
 automation_path_base = '../splunk-aws-automation/lambda_code'
 
 def zipDir(dirPath, zipPath):
-    zipf = zipfile.ZipFile(zipPath , mode='w')
+    zipf = zipfile.ZipFile(zipPath, mode='w')
     lenDirPath = len(dirPath)
     for root, _ , files in os.walk(dirPath):
+        for d in _:
+            os.chmod(os.path.join(root, d), 0o777)
         for file in files:
             if (file[0] != '.'):
                 filePath = os.path.join(root, file)
-                zipf.write(filePath , filePath[lenDirPath :] )
+                os.chmod(filePath, 0o777)
+                zipf.write(filePath, filePath[lenDirPath :] )
     zipf.close()
 
 # Automation configuration artifact zip and upload
@@ -43,7 +46,7 @@ for directory in os.listdir(automation_configuration_path_base):
         for bucket in buckets:
             print 'Automation configuration artifact:' + bucket + ' ' + directory
             with open(directory + '.zip', 'rb') as data:
-                s3.upload_fileobj(data, bucket, directory + '.zip')
+                s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
 
 
 # Automation artifact zip and upload
@@ -53,4 +56,4 @@ for directory in os.listdir(automation_path_base):
         for bucket in buckets:
             print 'Automation artifact:' + bucket + ' ' + directory
             with open(directory + '.zip', 'rb') as data:
-                s3.upload_fileobj(data, bucket, directory + '.zip')
+                s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
