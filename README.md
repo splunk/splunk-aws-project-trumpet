@@ -40,7 +40,7 @@ In addition, there is no longer an automated HEC token creation template and man
 
 **If you are visiting this repository from the Splunk blog post** - please note that the instructions in the post are currently out of date. Please follow the instructions in this README instead. (This message will be removed when the blog post is updated to reflect the most recent Trumpet update)
 
-Due to the significance of the changes, you may want to access the old version in the v0.1 release branch.
+Due to the significance of the changes, you may want to access the old version in the [v0.1 release branch](https://github.com/splunk/splunk-aws-project-trumpet/releases/tag/v0.1).
 
 You can find a summary of these changes in this repo's CHANGELOG.md file.
 
@@ -54,10 +54,10 @@ Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?) and t
 
 There are two options for accessing the configuration webpage.
 
-##### Option 1
+#### Option 1
 A hosted version of this tool is available at [https://splunktrumpet.github.io/](https://splunktrumpet.github.io/). Note that this site runs local to your browser, there is no outbound communication of your configuration options.
 
-##### Option 2
+#### Option 2
 If you would prefer to run the tool entirely locally, download `trumpet_website_source.zip` and unzip the file. 
 
 Open the index.html file in a web browser (usually this can be done by double clicking to open the file, otherwise, left click -> select *Open with* -> select a web browser).
