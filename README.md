@@ -52,7 +52,13 @@ Install the [Splunk App for AWS](https://splunkbase.splunk.com/app/1274/?) and t
           
 ### 1. Open the configuration webpage
 
-Download `trumpet_website_source.zip` and unzip the file. 
+There are two options for accessing the configuration webpage.
+
+##### Option 1
+A hosted version of this tool is available at [https://splunktrumpet.github.io/](https://splunktrumpet.github.io/). Note that this site runs local to your browser, there is no outbound communication of your configuration options.
+
+##### Option 2
+If you would prefer to run the tool entirely locally, download `trumpet_website_source.zip` and unzip the file. 
 
 Open the index.html file in a web browser (usually this can be done by double clicking to open the file, otherwise, left click -> select *Open with* -> select a web browser).
 
