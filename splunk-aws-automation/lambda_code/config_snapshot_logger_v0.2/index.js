@@ -127,7 +127,8 @@ const configureLogger = (context, callback) => {
 
     // Set common error handler for logger.send() and logger.flush()
     logger.error = (error, payload) => {
-        console.log('error', error, 'context', payload);
+        // console.log('error', error, 'context', payload);
+        console.log('SplunkHECError', error, 'URL', loggerConfig.url, 'Token', loggerConfig.token, 'context', payload);
         callback(error);
     };
 };

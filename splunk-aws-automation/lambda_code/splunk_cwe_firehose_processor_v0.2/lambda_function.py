@@ -48,7 +48,8 @@ The code below will:
 import base64
 import json
 import gzip
-import StringIO
+import io
+from io import StringIO
 import boto3
 
 
@@ -86,7 +87,7 @@ def processRecords(records):
         return_event['sourcetype'] = st
         return_event['event'] = data['detail']
 
-        data = base64.b64encode(json.dumps(return_event))
+        data = base64.b64encode(json.dumps(return_event).encode('utf-8')).decode('utf-8')
         yield {
             'data': data,
             'result': 'Ok',
