@@ -1560,7 +1560,7 @@
                                 ]
                             }
                         }
-                    }
+                    },
                     "SplunkConfigNotificationDeliveryCloudWatchAlarm": {
                         "Type": "AWS::CloudWatch::Alarm",
                         "Properties": {
