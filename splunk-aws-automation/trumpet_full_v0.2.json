@@ -1561,5 +1561,135 @@
                             }
                         }
                     }
+                    "SplunkConfigNotificationDeliveryCloudWatchAlarm": {
+                        "Type": "AWS::CloudWatch::Alarm",
+                        "Properties": {
+                            "AlarmName": "splunk-config-notification-delivery-fail",
+                            "AlarmDescription": "Config notification failing to deliver to Splunk",
+                            "Namespace": "AWS/Firehose",
+                            "MetricName": "DeliveryToSplunk.Success",
+                            "Dimensions": [
+                                {
+                                    "Name": "DeliveryStreamName",
+                                    "Value": "splunk-confignotify-cwe-monitoring"
+                                }
+                            ],
+                            "Statistic": "Average",
+                            "Period": 3600,
+                            "EvaluationPeriods": 1,
+                            "Threshold": 1,
+                            "ComparisonOperator": "LessThanThreshold",
+                            "TreatMissingData": "notBreaching",
+                            "AlarmActions": [
+                                {
+                                    "Fn::Sub": "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:splunk-cloudwatch-alarms"
+                                }
+                            ]
+                        }
+                    },
+                    "SplunkConfigSnapshotDeliveryCloudWatchAlarm": {
+                        "Type": "AWS::CloudWatch::Alarm",
+                        "Properties": {
+                            "AlarmName": "splunk-config-snapshot-delivery-fail",
+                            "AlarmDescription": "Config snapshot failing to deliver to Splunk",
+                            "Namespace": "SplunkHECStream",
+                            "MetricName": "DepliveryError",
+                            "Statistic": "Average",
+                            "Period": 900,
+                            "EvaluationPeriods": 1,
+                            "Threshold": 5,
+                            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                            "TreatMissingData": "notBreaching",
+                            "AlarmActions": [
+                                {
+                                    "Fn::Sub": "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:splunk-cloudwatch-alarms"
+                                }
+                            ]
+                        }
+                    },
+                    "ConfigSnapshotStreamStatusFilter": {
+                        "Type": "AWS::Logs::MetricFilter",
+                        "Properties": {
+                            "LogGroupName": {
+                                "Fn::Join": [
+                                    "/",
+                                    [
+                                        "/aws/lambda",
+                                        {
+                                            "Ref": "BackingLambdaConfigLogProcessor"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "FilterPattern": "SplunkHECError",
+                            "MetricTransformations": [
+                                {
+                                    "MetricValue": "1",
+                                    "MetricNamespace": "SplunkHECStream",
+                                    "MetricName": "DepliveryError"
+                                }
+                            ]
+                        }
+                    },
+                    "SplunkCWAlarmTopic": {
+                        "Type": "AWS::SNS::Topic",
+                        "Properties": {
+                            "TopicName": "splunk-cloudwatch-alarms"
+                        }
+                    },
+                    "SplunkCWAlarmTopicPolicy": {
+                        "Type": "AWS::SNS::TopicPolicy",
+                        "Properties": {
+                            "Topics": [
+                                {
+                                    "Ref": "SplunkCWAlarmTopic"
+                                }
+                            ],
+                            "PolicyDocument": {
+                                "Version": "2012-10-17",
+                                "Statement": [
+                                    {
+                                        "Sid": "__default_statement_ID",
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "AWS": "*"
+                                        },
+                                        "Action": [
+                                            "SNS:GetTopicAttributes",
+                                            "SNS:SetTopicAttributes",
+                                            "SNS:AddPermission",
+                                            "SNS:RemovePermission",
+                                            "SNS:DeleteTopic",
+                                            "SNS:Subscribe",
+                                            "SNS:ListSubscriptionsByTopic",
+                                            "SNS:Publish",
+                                            "SNS:Receive"
+                                        ],
+                                        "Resource": {
+                                            "Ref": "SplunkCWAlarmTopic"
+                                        },
+                                        "Condition": {
+                                            "StringEquals": {
+                                                "AWS:SourceOwner": {
+                                                    "Fn::Sub": "${AWS::AccountId}"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "Sid": "AllowCloudWatchEvents",
+                                        "Effect": "Allow",
+                                        "Principal": {
+                                            "Service": "events.amazonaws.com"
+                                        },
+                                        "Action": "sns:Publish",
+                                        "Resource": {
+                                            "Ref": "SplunkCWAlarmTopic"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
                 }
             }
