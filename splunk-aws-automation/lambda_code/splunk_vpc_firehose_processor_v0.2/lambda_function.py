@@ -48,8 +48,15 @@ The code below will:
 import base64
 import json
 import gzip
-import StringIO
 import boto3
+import sys
+
+IS_PY3 = sys.version_info[0] == 3
+
+if IS_PY3:
+    import io
+else:
+    import StringIO
 
 
 def transformLogEvent(log_event, source):
@@ -73,7 +80,10 @@ def transformLogEvent(log_event, source):
 def processRecords(records):
     for r in records:
         data = base64.b64decode(r['data'])
-        striodata = StringIO.StringIO(data)
+        if IS_PY3:
+            striodata = io.StringIO(data)
+        else:
+            striodata = StringIO.StringIO(data)
         with gzip.GzipFile(fileobj=striodata, mode='r') as f:
             data = json.loads(f.read())
 
@@ -90,7 +100,10 @@ def processRecords(records):
         elif data['messageType'] == 'DATA_MESSAGE':
             source = data['logGroup'] + ":" + data['logStream']
             data = ''.join([transformLogEvent(e, source) for e in data['logEvents']])
-            data = base64.b64encode(data)
+            if IS_PY3:
+                data = base64.b64encode(data.encode('utf-8')).decode()
+            else:
+                data = base64.b64encode(data)
             yield {
                 'data': data,
                 'result': 'Ok',
