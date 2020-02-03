@@ -43,9 +43,11 @@ The code below will:
 """
 
 import base64
-import json
 import boto3
+import json
+import sys
 
+IS_PY3 = sys.version_info[0] == 3
 
 def transformLogEvent(log_event, source):
     """Transform each log event.
@@ -81,7 +83,11 @@ def processRecords(records):
         return_event['sourcetype'] = st
         return_event['event'] = data['detail']
 
-        data = base64.b64encode(json.dumps(return_event))
+        if IS_PY3:
+            # base64 encode api changes in python3 to operate exclusively on byte-like objects and bytes
+            data = base64.b64encode(json.dumps(return_event).encode('utf-8')).decode()
+        else:
+            data = base64.b64encode(json.dumps(return_event))
         yield {
             'data': data,
             'result': 'Ok',
