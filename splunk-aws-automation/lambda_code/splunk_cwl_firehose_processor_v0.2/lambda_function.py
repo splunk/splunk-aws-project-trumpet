@@ -80,11 +80,11 @@ def processRecords(records):
     for r in records:
         data = base64.b64decode(r['data'])
         if IS_PY3:
-            striodata = io.StringIO(data.decode())
+            iodata = io.BytesIO(data)
         else:
-            striodata = StringIO.StringIO(data)
+            iodata = StringIO.StringIO(data)
 
-        with gzip.GzipFile(fileobj=striodata, mode='r') as f:
+        with gzip.GzipFile(fileobj=iodata, mode='r') as f:
             data = json.loads(f.read())
 
         recId = r['recordId']
