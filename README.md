@@ -100,6 +100,7 @@ If you select the aws:config sourcetype, you will need to create a HEC token wit
     * **App Context:** `splunk_httpinput (splunk_httpinput)`
     
 ## Splunk Cloud Compatibility
+HEC and Firehose HEC configuration needs to happen on main search head (http://customer.splunkcloud.com).
 This project is compatible with Splunk Cloud, however there is one significant consideration.
 Because of the Kinesis Firehose requirement for an endpoint with a valid certificate installed, you will need to request from Splunk Cloud Support a provisioned valid HEC endpoint with a valid SSL certificate alreadyinstalled. This endpoint can be requested with a Splunk Support ticket in the steps outlined [here](https://docs.splunk.com/Documentation/AddOns/released/Firehose/RequestFirehose).
 
