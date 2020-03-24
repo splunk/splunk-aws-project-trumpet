@@ -95,7 +95,7 @@ If you select the aws:config sourcetype, you will need to create a HEC token wit
 * ***Indexer acknowledgement turned off***
     * **Name:** Enter a name of your choice
     * **Enable indexer acknowledgement:** ***unchecked***
-    * **Source type:** `Auomatic`
+    * **Source type:** `Automatic`
     * **Index:** selection should align to options described [here](https://docs.splunk.com/Documentation/AWS/5.1.1/Installation/Macros). Generally this should be `main`.
     * **App Context:** `splunk_httpinput (splunk_httpinput)`
     
