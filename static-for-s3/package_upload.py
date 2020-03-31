@@ -51,7 +51,7 @@ for directory in os.listdir(automation_configuration_path_base):
 
 # Automation artifact zip and upload
 for directory in os.listdir(automation_path_base):
-    if (directory[0] != '.' and directory != 'v0.1'):
+    if (directory[0] != '.' and directory != 'v0.1' and directory != 'v0.2'):
         zipDir(automation_path_base + '/' + directory + '/', directory + '.zip')
         for bucket in buckets:
             print 'Automation artifact:' + bucket + ' ' + directory

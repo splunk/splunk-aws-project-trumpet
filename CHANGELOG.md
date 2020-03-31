@@ -1,4 +1,11 @@
-### v0.2 - 03/20/2019
+### v0.3 - 04/02/2020
+
+* Fixes for data sources with naming changes
+* Python3.7 and nodejs12.x support. Thanks @dkujawski!
+* README updates and fixes. Thanks @gliptak!
+* Config function handles case where multiple regions share the same config bucket
+
+### v0.2 - 06/19/2019
 
 * Additional data sources have been added to the trumpet configuration tool. These include AWS VPC Flow logs, custom AWS CloudWatch Log groups, and **all** AWS data sources available through AWS CloudWatch Events (This includes AWS GuardDuty Findings, AWS Macie Alerts, AWS Health Events, etc.).
 * For full functionality, trumpet now only requires two HTTP Event Collector (HEC) tokens to be created. One with indexer acknowledgement enabled, and one without (this token is only used if you choose to configure sending AWS Config data), all other token attributes (source, sourcetype, etc.) are not used and will be overridden.

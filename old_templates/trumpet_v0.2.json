@@ -1,0 +1,1826 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template for AWS data ingest into Splunk using AWS Kinesis Firehose and AWS Lambda.",
+  "Mappings": {
+    "BucketMap": {
+      "us-east-1": {
+        "BucketName": "trumpet-splunk-prod-us-east-1"
+      },
+      "us-east-2": {
+        "BucketName": "trumpet-splunk-prod-us-east-2"
+      },
+      "us-west-1": {
+        "BucketName": "trumpet-splunk-prod-us-west-1"
+      },
+      "us-west-2": {
+        "BucketName": "trumpet-splunk-prod-us-west-2"
+      },
+      "ca-central-1": {
+        "BucketName": "trumpet-splunk-prod-ca-central-1"
+      },
+      "eu-central-1": {
+        "BucketName": "trumpet-splunk-prod-eu-central-1"
+      },
+      "eu-west-1": {
+        "BucketName": "trumpet-splunk-prod-eu-west-1"
+      },
+      "eu-west-2": {
+        "BucketName": "trumpet-splunk-prod-eu-west-2"
+      },
+      "eu-west-3": {
+        "BucketName": "trumpet-splunk-prod-eu-west-3"
+      },
+      "ap-northeast-1": {
+        "BucketName": "trumpet-splunk-prod-ap-northeast-1"
+      },
+      "ap-northeast-2": {
+        "BucketName": "trumpet-splunk-prod-ap-northeast-2"
+      },
+      "ap-southeast-1": {
+        "BucketName": "trumpet-splunk-prod-ap-southeast-1"
+      },
+      "ap-southeast-2": {
+        "BucketName": "trumpet-splunk-prod-ap-southeast-2"
+      },
+      "ap-south-1": {
+        "BucketName": "trumpet-splunk-prod-ap-south-1"
+      },
+      "sa-east-1": {
+        "BucketName": "trumpet-splunk-prod-sa-east-1"
+      }
+    }
+  },
+  "Parameters": {
+    "SplunkUsername": {
+      "Description": "The Splunk user that will be used by the template to configure HEC for Trumpet. This user should have permission to list and create HEC tokens.",
+      "Type": "String"
+    },
+    "SplunkPassword": {
+      "Description": "The Splunk password for the provided user.",
+      "Type": "String",
+      "NoEcho": true
+    }
+  },
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
+        {
+          "Label": {
+            "default": "Splunk credentials"
+          },
+          "Parameters": [
+            "SplunkUsername",
+            "SplunkPassword"
+          ]
+        }
+      ],
+      "ParameterLabels": {
+        "SplunkUsername": {
+          "default": "Splunk username"
+        },
+        "SplunkPassword": {
+          "default": "Splunk password"
+        }
+      }
+    }
+  },
+  "Resources": {
+    "LambdaHecAutomation": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::FindInMap": [
+              "BucketMap",
+              {
+                "Ref": "AWS::Region"
+              },
+              "BucketName"
+            ]
+          },
+          "S3Key": "hec_auto_v0.2.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "LambdaHecAutomationExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python2.7",
+        "Timeout": "30"
+      }
+    },
+    "LambdaHecAutomationExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "root",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CustomResourceHecAutomation": {
+      "Type": "Custom::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LambdaHecAutomation",
+            "Arn"
+          ]
+        },
+        "SplunkUser": "",
+        "SplunkPassword": "",
+        "SplunkHttpEventCollectorManagementURL": "",
+        "AWSRegion": {
+          "Ref": "AWS::Region"
+        }
+      }
+    },
+    "ConfigurationRecorderSanitizationLambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "ConfigurationRecorderSanitizationLambdaExecutionRole",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "iam:PassRole"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "BackingLambdaExecutionConfigLogProcessor",
+                        "Arn"
+                      ]
+                    }
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "config:DescribeConfigurationRecorders",
+                    "config:DescribeDeliveryChannels",
+                    "config:PutConfigurationRecorder",
+                    "config:StartConfigurationRecorder",
+                    "config:PutDeliveryChannel",
+                    "config:DescribeConfigurationRecorderStatus"
+                  ],
+                  "Resource": [
+                    "*"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "iam:PassRole"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ConfigRole",
+                        "Arn"
+                      ]
+                    }
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ConfigBucketPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "Principal": "s3.amazonaws.com",
+        "FunctionName": {
+          "Ref": "BackingLambdaConfigLogProcessor"
+        },
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "ConfigurationRecorderSanitisationResults",
+            "FinalS3BucketConfigArn"
+          ]
+        }
+      }
+    },
+    "BackingLambdaConfigLogProcessor": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::FindInMap": [
+              "BucketMap",
+              {
+                "Ref": "AWS::Region"
+              },
+              "BucketName"
+            ]
+          },
+          "S3Key": "config_snapshot_logger_v0.2.zip"
+        },
+        "Description": "Stream events from an AWS S3 bucket being updated by AWS config to Splunk using HTTP event collector",
+        "MemorySize": 512,
+        "Environment": {
+          "Variables": {
+            "SPLUNK_HEC_URL": "",
+            "SPLUNK_HEC_TOKEN": ""
+          }
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "BackingLambdaExecutionConfigLogProcessorRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 900,
+        "Runtime": "nodejs8.10"
+      }
+    },
+    "ConfigurationRecorderLambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "ConfigLambdaExecutionRolePolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:PutObject",
+                    "s3:DeleteObject",
+                    "s3:GetBucketPolicy",
+                    "s3:PutBucketNotification"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "ConfigurationRecorderSanitisationResults",
+                      "FinalS3BucketConfigArn"
+                    ]
+                  },
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CloudTrailEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "EventPattern": {
+          "detail-type": [
+            "AWS API Call via CloudTrail",
+            "AWS Console Sign In via CloudTrail"
+          ]
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "RoleArn": {
+              "Fn::GetAtt": [
+                "CWEFirehoseDeliveryRole",
+                "Arn"
+              ]
+            },
+            "Id": "splunk_cloudtrail_firehose_target",
+            "Arn": {
+              "Fn::GetAtt": [
+                "CWEFirehoseDeliveryStream",
+                "Arn"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ConfigBucketConfiguration": {
+      "Type": "Custom::S3ConfigBucketConfiguration",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ConfigUpdateBucketConfiguration",
+            "Arn"
+          ]
+        },
+        "Bucket": {
+          "Fn::GetAtt": [
+            "ConfigurationRecorderSanitisationResults",
+            "FinalS3BucketConfig"
+          ]
+        },
+        "NotificationConfiguration": {
+          "LambdaFunctionConfigurations": [
+            {
+              "LambdaFunctionArn": {
+                "Fn::GetAtt": [
+                  "BackingLambdaConfigLogProcessor",
+                  "Arn"
+                ]
+              },
+              "Events": [
+                "s3:ObjectCreated:*"
+              ]
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "ConfigBucketPermission"
+      ]
+    },
+    "ConfigurationRecorderSanitiser": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::FindInMap": [
+              "BucketMap",
+              {
+                "Ref": "AWS::Region"
+              },
+              "BucketName"
+            ]
+          },
+          "S3Key": "config_discovery_v0.2.zip"
+        },
+        "Runtime": "nodejs8.10",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "ConfigurationRecorderSanitizationLambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 300
+      }
+    },
+    "BackingLambdaExecutionConfigLogProcessor": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "BackingLambdaExecutionCloudTrailLogProcessorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:getObject",
+                    "s3:putObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        {
+                          "Ref": "S3BucketConfig"
+                        },
+                        "/*"
+                      ]
+                    ]
+                  },
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ConfigUpdateBucketConfiguration": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Sub": "var https = require('https');\nvar url = require('url');\nvar AWS = require('aws-sdk');\nfunction send(event, context, status, payload) {\n    var body = JSON.stringify({\n        StackId: event.StackId,\n        RequestId: event.RequestId,\n        LogicalResourceId: event.LogicalResourceId,\n        NoEcho: false,\n        Data: payload,\n        Status: status,\n        Reason: 'See the details in CloudWatch Log Stream: ' + context.logStreamName,\n        PhysicalResourceId: context.logStreamName\n    });\n    var requestOptions = {\n        headers: {\n            'content-length': body.length,\n            'content-type': ''\n        },\n        hostname: url.parse(event.ResponseURL).hostname,\n        port: 443,\n        path: url.parse(event.ResponseURL).path,\n        method: 'PUT'\n    };\n    var makeRequest = https.request(requestOptions, function(response) {\n        context.done();\n    });\n    makeRequest.on('error', function(error) {\n        context.done();\n    });\n    makeRequest.write(body);\n    makeRequest.end();\n}\nvar s3 = new AWS.S3();\nexports.handler = function(event, context) {\n  var respond = (e) => send(event, context, e ? 'FAILED' : 'SUCCESS', e ? e : {});\n  var params = event.ResourceProperties;\n  delete params.ServiceToken;\n  if (event.RequestType === 'Delete') {\n    params.NotificationConfiguration = {};\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond());\n  } else {\n    s3.putBucketNotificationConfiguration(params).promise()\n      .then((data)=>respond())\n      .catch((e)=>respond(e));\n  }\n};\n"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "ConfigurationRecorderLambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Description": "S3 Object Custom Resource",
+        "Timeout": 300,
+        "Handler": "index.handler",
+        "Runtime": "nodejs8.10"
+      }
+    },
+    "S3BucketConfig": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "ConfigurationRecorderSanitisationResults": {
+      "Type": "Custom::ConfigurationRecorderSanitisationResults",
+      "Properties": {
+        "S3BucketConfig": {
+          "Ref": "S3BucketConfig"
+        },
+        "RoleARN": {
+          "Fn::GetAtt": [
+            "BackingLambdaExecutionConfigLogProcessor",
+            "Arn"
+          ]
+        },
+        "ConfigRecorderName": "ConfigRecorder",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ConfigurationRecorderSanitiser",
+            "Arn"
+          ]
+        },
+        "S3BucketConfigArn": {
+          "Fn::GetAtt": [
+            "S3BucketConfig",
+            "Arn"
+          ]
+        },
+        "RecorderRoleArn": {
+          "Fn::GetAtt": [
+            "ConfigRole",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "ConfigNotificationEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "EventPattern": {
+          "source": [
+            "aws.config"
+          ],
+          "detail-type": [
+            "Config Configuration Item Change"
+          ]
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "RoleArn": {
+              "Fn::GetAtt": [
+                "CWEFirehoseDeliveryRole",
+                "Arn"
+              ]
+            },
+            "Id": "splunk_config_notification_firehose_target",
+            "Arn": {
+              "Fn::GetAtt": [
+                "CWEFirehoseDeliveryStream",
+                "Arn"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CWEFirehoseProcessor": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::FindInMap": [
+              "BucketMap",
+              {
+                "Ref": "AWS::Region"
+              },
+              "BucketName"
+            ]
+          },
+          "S3Key": "splunk_cwe_firehose_processor_v0.2.zip"
+        },
+        "Description": "Stream events from CloudWatch Events to Splunk using HTTP event collector",
+        "MemorySize": 512,
+        "Handler": "lambda_function.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CWEFirehoseProcessorRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 300,
+        "Runtime": "python2.7"
+      }
+    },
+    "CWEFindingEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "EventPattern": {
+          "source": [],
+          "detail-type": []
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "RoleArn": {
+              "Fn::GetAtt": [
+                "CWEFirehoseDeliveryRole",
+                "Arn"
+              ]
+            },
+            "Id": "splunk_cwe_firehose_target",
+            "Arn": {
+              "Fn::GetAtt": [
+                "CWEFirehoseDeliveryStream",
+                "Arn"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CWEFirehoseDeliveryStream": {
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "Properties": {
+        "SplunkDestinationConfiguration": {
+          "S3Configuration": {
+            "CompressionFormat": "UNCOMPRESSED",
+            "BucketARN": {
+              "Fn::GetAtt": [
+                "CWEBackupS3Bucket",
+                "Arn"
+              ]
+            },
+            "RoleARN": {
+              "Fn::GetAtt": [
+                "CWEBackupS3Role",
+                "Arn"
+              ]
+            },
+            "BufferingHints": {
+              "IntervalInSeconds": 300,
+              "SizeInMBs": 1
+            }
+          },
+          "HECEndpointType": "Event",
+          "HECToken": "SPLUNK_HEC_TOKEN",
+          "HECAcknowledgmentTimeoutInSeconds": 180,
+          "RetryOptions": {
+            "DurationInSeconds": 300
+          },
+          "HECEndpoint": "SPLUNK_HEC_URL",
+          "S3BackupMode": "FailedEventsOnly",
+          "ProcessingConfiguration": {
+            "Enabled": true,
+            "Processors": [
+              {
+                "Parameters": [
+                  {
+                    "ParameterName": "LambdaArn",
+                    "ParameterValue": {
+                      "Fn::GetAtt": [
+                        "CWEFirehoseProcessor",
+                        "Arn"
+                      ]
+                    }
+                  },
+                  {
+                    "ParameterName": "RoleArn",
+                    "ParameterValue": {
+                      "Fn::GetAtt": [
+                        "CWEBackupS3Role",
+                        "Arn"
+                      ]
+                    }
+                  }
+                ],
+                "Type": "Lambda"
+              }
+            ]
+          }
+        },
+        "DeliveryStreamType": "DirectPut"
+      }
+    },
+    "CWEFirehoseDeliveryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CWEFirehoseDeliveryPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "firehose_delivery_policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "firehose:PutRecord",
+                "firehose:PutRecordBatch"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "CWEFirehoseDeliveryStream",
+                    "Arn"
+                  ]
+                }
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "CWEFirehoseDeliveryRole"
+          }
+        ]
+      }
+    },
+    "CWEBackupS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "CWEBackupS3Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "CWEBackupS3Role",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "glue:GetTableVersions"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketLocation",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:PutObject"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction",
+                    "lambda:GetFunctionConfiguration"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kinesis:DescribeStream",
+                    "kinesis:GetShardIterator",
+                    "kinesis:GetRecords"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt"
+                  ],
+                  "Resource": "*",
+                  "Condition": {
+                    "StringEquals": {
+                      "kms:ViaService": {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "kinesis.",
+                            {
+                              "Ref": "AWS::Region"
+                            },
+                            ".amazonaws.com"
+                          ]
+                        ]
+                      }
+                    },
+                    "StringLike": {
+                      "kms:EncryptionContext:aws:kinesis:arn": {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:aws:kinesis:",
+                            {
+                              "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                              "Ref": "AWS::AccountId"
+                            },
+                            ":stream/%FIREHOSE_STREAM_NAME%"
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "firehose.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CWEFirehoseProcessorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "CWEFirehoseProcessorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "kinesis:GetRecords",
+                    "kinesis:GetShardIterator",
+                    "kinesis:DescribeStream",
+                    "kinesis:ListStreams",
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CWLFirehoseProcessor": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::FindInMap": [
+              "BucketMap",
+              {
+                "Ref": "AWS::Region"
+              },
+              "BucketName"
+            ]
+          },
+          "S3Key": "splunk_cwl_firehose_processor_v0.2.zip"
+        },
+        "Description": "Stream events from CLoudWatch Logs to Splunk using HTTP event collector",
+        "MemorySize": 512,
+        "Handler": "lambda_function.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CWLFirehoseProcessorRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 300,
+        "Runtime": "python2.7"
+      }
+    },
+    "CWLtoKinesisFirehoseRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Policies": [
+          {
+            "PolicyName": "CWLtoKinesisFirehosePolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "firehose:*"
+                  ],
+                  "Resource": [
+                    "arn:aws:firehose:*:*:*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:PassRole"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::*:role/CWLtoKinesisFirehoseRole"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "logs.",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ".amazonaws.com"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "CWLFlowLogSubscriptionFilter": {
+      "Type": "AWS::Logs::SubscriptionFilter",
+      "Properties": {
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "CWLtoKinesisFirehoseRole",
+            "Arn"
+          ]
+        },
+        "LogGroupName": "placeholder",
+        "FilterPattern": "",
+        "DestinationArn": {
+          "Fn::GetAtt": [
+            "CWLFirehoseDeliveryStream",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "CWLFirehoseDeliveryStream": {
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "Properties": {
+        "SplunkDestinationConfiguration": {
+          "S3Configuration": {
+            "CompressionFormat": "UNCOMPRESSED",
+            "BucketARN": {
+              "Fn::GetAtt": [
+                "CWLBackupS3Bucket",
+                "Arn"
+              ]
+            },
+            "RoleARN": {
+              "Fn::GetAtt": [
+                "CWLBackupS3Role",
+                "Arn"
+              ]
+            },
+            "BufferingHints": {
+              "IntervalInSeconds": 300,
+              "SizeInMBs": 1
+            }
+          },
+          "HECEndpointType": "Event",
+          "HECToken": "SPLUNK_HEC_TOKEN",
+          "HECAcknowledgmentTimeoutInSeconds": 180,
+          "RetryOptions": {
+            "DurationInSeconds": 300
+          },
+          "HECEndpoint": "SPLUNK_HEC_URL",
+          "S3BackupMode": "FailedEventsOnly",
+          "ProcessingConfiguration": {
+            "Enabled": true,
+            "Processors": [
+              {
+                "Parameters": [
+                  {
+                    "ParameterName": "LambdaArn",
+                    "ParameterValue": {
+                      "Fn::GetAtt": [
+                        "CWLFirehoseProcessor",
+                        "Arn"
+                      ]
+                    }
+                  },
+                  {
+                    "ParameterName": "RoleArn",
+                    "ParameterValue": {
+                      "Fn::GetAtt": [
+                        "CWLBackupS3Role",
+                        "Arn"
+                      ]
+                    }
+                  }
+                ],
+                "Type": "Lambda"
+              }
+            ]
+          }
+        },
+        "DeliveryStreamType": "DirectPut"
+      }
+    },
+    "CWLFirehoseDeliveryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CWLFirehoseDeliveryPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "firehose_delivery_policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "firehose:PutRecord",
+                "firehose:PutRecordBatch"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "CWLFirehoseDeliveryStream",
+                    "Arn"
+                  ]
+                }
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "CWLFirehoseDeliveryRole"
+          }
+        ]
+      }
+    },
+    "CWLBackupS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "CWLBackupS3Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "CWLBackupS3Role",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "glue:GetTableVersions"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketLocation",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:PutObject"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction",
+                    "lambda:GetFunctionConfiguration"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kinesis:DescribeStream",
+                    "kinesis:GetShardIterator",
+                    "kinesis:GetRecords"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Action": [
+                    "kms:Decrypt"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:kms:",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ":",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":key/%SSE_KEY_ARN%"
+                      ]
+                    ]
+                  },
+                  "Condition": {
+                    "StringEquals": {
+                      "kms:ViaService": {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "kinesis.",
+                            {
+                              "Ref": "AWS::Region"
+                            },
+                            ".amazonaws.com"
+                          ]
+                        ]
+                      }
+                    },
+                    "StringLike": {
+                      "kms:EncryptionContext:aws:kinesis:arn": {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:aws:kinesis:",
+                            {
+                              "Ref": "AWS::Region"
+                            },
+                            ":",
+                            {
+                              "Ref": "AWS::AccountId"
+                            },
+                            ":stream/%FIREHOSE_STREAM_NAME%"
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "firehose.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "CWLFirehoseProcessorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "CWLFirehoseProcessorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateLogGroup",
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:*:*:*:*:*"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "VPCtoKinesisFirehoseRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Policies": [
+          {
+            "PolicyName": "VPCtoKinesisFirehosePolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "firehose:*"
+                  ],
+                  "Resource": [
+                    "arn:aws:firehose:*:*:*"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:PassRole"
+                  ],
+                  "Resource": [
+                    "arn:aws:iam::*:role/VPCtoKinesisFirehoseRole"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": {
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+              "Service": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "logs.",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ".amazonaws.com"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "VPCFlowLogSubscriptionFilter": {
+      "Type": "AWS::Logs::SubscriptionFilter",
+      "Properties": {
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "VPCtoKinesisFirehoseRole",
+            "Arn"
+          ]
+        },
+        "LogGroupName": "placeholder",
+        "FilterPattern": "",
+        "DestinationArn": {
+          "Fn::GetAtt": [
+            "VPCFirehoseDeliveryStream",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "VPCFirehoseDeliveryStream": {
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "Properties": {
+        "SplunkDestinationConfiguration": {
+          "S3Configuration": {
+            "CompressionFormat": "UNCOMPRESSED",
+            "BucketARN": {
+              "Fn::GetAtt": [
+                "VPCBackupS3Bucket",
+                "Arn"
+              ]
+            },
+            "RoleARN": {
+              "Fn::GetAtt": [
+                "VPCBackupS3Role",
+                "Arn"
+              ]
+            },
+            "BufferingHints": {
+              "IntervalInSeconds": 300,
+              "SizeInMBs": 1
+            }
+          },
+          "HECEndpointType": "Event",
+          "HECToken": "SPLUNK_HEC_TOKEN",
+          "HECAcknowledgmentTimeoutInSeconds": 180,
+          "RetryOptions": {
+            "DurationInSeconds": 300
+          },
+          "HECEndpoint": "SPLUNK_HEC_URL",
+          "S3BackupMode": "FailedEventsOnly",
+          "ProcessingConfiguration": {
+            "Enabled": true,
+            "Processors": [
+              {
+                "Parameters": [
+                  {
+                    "ParameterName": "LambdaArn",
+                    "ParameterValue": {
+                      "Fn::GetAtt": [
+                        "VPCFirehoseProcessor",
+                        "Arn"
+                      ]
+                    }
+                  },
+                  {
+                    "ParameterName": "RoleArn",
+                    "ParameterValue": {
+                      "Fn::GetAtt": [
+                        "VPCBackupS3Role",
+                        "Arn"
+                      ]
+                    }
+                  }
+                ],
+                "Type": "Lambda"
+              }
+            ]
+          }
+        },
+        "DeliveryStreamType": "DirectPut"
+      }
+    },
+    "VPCFirehoseDeliveryRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "events.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "VPCFirehoseDeliveryPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "firehose_delivery_policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "firehose:PutRecord",
+                "firehose:PutRecordBatch"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "VPCFirehoseDeliveryStream",
+                    "Arn"
+                  ]
+                }
+              ],
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "VPCFirehoseDeliveryRole"
+          }
+        ]
+      }
+    },
+    "VPCBackupS3Bucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        }
+      }
+    },
+    "VPCBackupS3Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "VPCBackupS3Role",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:AbortMultipartUpload",
+                    "s3:GetBucketLocation",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:ListBucketMultipartUploads",
+                    "s3:PutObject"
+                  ],
+                  "Resource": "*",
+                  "Effect": "Allow"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction",
+                    "lambda:GetFunctionConfiguration"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "firehose.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "VPCFirehoseProcessorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "VPCFirehoseProcessorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateLogGroup",
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:*:*:*:*:*"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "VPCFirehoseProcessor": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::FindInMap": [
+              "BucketMap",
+              {
+                "Ref": "AWS::Region"
+              },
+              "BucketName"
+            ]
+          },
+          "S3Key": "splunk_vpc_firehose_processor_v0.2.zip"
+        },
+        "Description": "Stream events from VPC Flow Logs to Splunk using HTTP event collector",
+        "MemorySize": 512,
+        "Handler": "lambda_function.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "VPCFirehoseProcessorRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 300,
+        "Runtime": "python2.7"
+      }
+    },
+    "ConfigRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSConfigRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "ConfigRolePolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:PutObject"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        {
+                          "Ref": "S3BucketConfig"
+                        },
+                        "/AWSLogs/",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        "/*"
+                      ]
+                    ]
+                  },
+                  "Effect": "Allow",
+                  "Condition": {
+                    "StringLike": {
+                      "s3:x-amz-acl": "bucket-owner-full-control"
+                    }
+                  }
+                },
+                {
+                  "Action": "config:Put*",
+                  "Resource": "*",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "s3:GetBucketAcl"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:s3:::",
+                        {
+                          "Ref": "S3BucketConfig"
+                        }
+                      ]
+                    ]
+                  },
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "config.amazonaws.com"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "BackingLambdaExecutionConfigLogProcessorRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "Path": "/",
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "BackingLambdaExecutionConfigLogProcessorPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "s3:getObject",
+                    "s3:putObject",
+                    "s3:ListBucket"
+                  ],
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        {
+                          "Fn::GetAtt": [
+                            "ConfigurationRecorderSanitisationResults",
+                            "FinalS3BucketConfigArn"
+                          ]
+                        },
+                        "/AWSLogs/",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        "/*"
+                      ]
+                    ]
+                  },
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ],
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
