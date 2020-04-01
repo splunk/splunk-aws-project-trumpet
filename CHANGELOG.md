@@ -1,3 +1,10 @@
+### v0.3 - 04/02/2020
+
+* Fixes for data sources with naming changes
+* Python3.7 and nodejs12.x support. Thanks @dkujawski!
+* README updates and fixes. Thanks @gliptak!
+* Config function handles case where multiple regions share the same config bucket
+
 ### v0.2 - 06/19/2019
 
 * Additional data sources have been added to the trumpet configuration tool. These include AWS VPC Flow logs, custom AWS CloudWatch Log groups, and **all** AWS data sources available through AWS CloudWatch Events (This includes AWS GuardDuty Findings, AWS Macie Alerts, AWS Health Events, etc.).
