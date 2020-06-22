@@ -1,3 +1,10 @@
+### v0.31 - 06/22/2020
+
+* Adding optional Filter pattern to Cloudwatch and vpc flow logs 
+* Adding UI validation for HEC URL and token
+* Cloudwatch events are not enabled by default
+* README updates
+
 ### v0.3 - 04/02/2020
 
 * Fixes for data sources with naming changes
