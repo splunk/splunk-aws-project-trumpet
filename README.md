@@ -27,7 +27,9 @@ Currently the following sourcetypes are supported by the automation templates:
 * ***aws:cloudwatchlogs***
     * Example: AWS Lambda logs
     * Example: custom logs
+    * Filter pattern is optional (For syntax: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)
 * ***aws:cloudwatchlogs:vpcflowlogs***
+    * Filter pattern is optional (For syntax: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)
 * ***aws:AWS service sending to CloudWatch Events:firehose***
     * Example: ***aws:guardduty:firehose***
     * Example: ***aws:macie:firehose***
