@@ -33,6 +33,7 @@ Currently the following sourcetypes are supported by the automation templates:
 * ***aws:AWS service sending to CloudWatch Events:firehose***
     * Example: ***aws:guardduty:firehose***
     * Example: ***aws:macie:firehose***
+    * Example: ***aws:securityhub**** (see https://github.com/splunk/splunk-for-securityHub for more info on how to set up Security Hub events)
 
 ## Major update:
 
