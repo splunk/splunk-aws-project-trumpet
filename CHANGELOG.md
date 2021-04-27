@@ -1,6 +1,10 @@
+### v0.4 - 04/27/2021
+* Updating CWL, VPC and CWE lambda code to version 0.4
+* Generating necessary zip files and uploading to S3
+
 ### v0.31 - 06/22/2020
 
-* Adding optional Filter pattern to Cloudwatch and vpc flow logs 
+* Adding optional Filter pattern to Cloudwatch and vpc flow logs
 * Adding UI validation for HEC URL and token
 * Cloudwatch events are not enabled by default
 * README updates
