@@ -44,7 +44,7 @@ for directory in os.listdir(automation_configuration_path_base):
     if (directory[0] != '.'):
         zipDir(automation_configuration_path_base + '/' + directory + '/', directory + '.zip')
         for bucket in buckets:
-            print 'Automation configuration artifact:' + bucket + ' ' + directory
+            print("Automation configuration artifact:{} {}".format(bucket, directory))
             with open(directory + '.zip', 'rb') as data:
                 s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
 
@@ -54,6 +54,6 @@ for directory in os.listdir(automation_path_base):
     if (directory[0] != '.' and directory != 'v0.1' and directory != 'v0.2'):
         zipDir(automation_path_base + '/' + directory + '/', directory + '.zip')
         for bucket in buckets:
-            print 'Automation artifact:' + bucket + ' ' + directory
+            print("Automation artifact:{} {}".format(bucket, directory))
             with open(directory + '.zip', 'rb') as data:
                 s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
