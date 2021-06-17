@@ -1,3 +1,6 @@
+### v0.5 - 06/17/2021
+* Cloudtrail logs now use CW Log Group to send data and not CWE.
+
 ### v0.4 - 04/27/2021
 * Updating CWL, VPC and CWE lambda code to version 0.4
 * Generating necessary zip files and uploading to S3
