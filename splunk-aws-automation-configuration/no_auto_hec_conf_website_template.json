@@ -16,7 +16,13 @@
         "ap-southeast-1": { "BucketName": "trumpet-splunk-prod-ap-southeast-1" },
         "ap-southeast-2": { "BucketName": "trumpet-splunk-prod-ap-southeast-2" },
         "ap-south-1": { "BucketName": "trumpet-splunk-prod-ap-south-1" },
-        "sa-east-1": { "BucketName": "trumpet-splunk-prod-sa-east-1" }
+        "sa-east-1": { "BucketName": "trumpet-splunk-prod-sa-east-1" },
+        "eu-north-1": { "BucketName": "trumpet-splunk-prod-eu-north-1" },
+        "ap-northeast-3": { "BucketName": "trumpet-splunk-prod-ap-northeast-3" },
+        "ap-east-1": { "BucketName": "trumpet-splunk-prod-ap-east-1" },
+        "af-south-1": { "BucketName": "trumpet-splunk-prod-af-south-1" },
+        "me-south-1": { "BucketName": "trumpet-splunk-prod-me-south-1" },
+        "eu-south-1": { "BucketName": "trumpet-splunk-prod-eu-south-1" }
       }
     },
     "Resources": {

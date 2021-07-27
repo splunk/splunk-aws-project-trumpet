@@ -1,7 +1,9 @@
 import os
 import boto3
 import zipfile
+import re
 
+# Follow below s3 bucket naming convention when creating new buckets
 buckets = [
     'trumpet-splunk-prod-us-east-1', # CREATED
     'trumpet-splunk-prod-us-east-2', # CREATED
@@ -17,12 +19,16 @@ buckets = [
     'trumpet-splunk-prod-ap-southeast-1', # CREATED
     'trumpet-splunk-prod-ap-southeast-2', # CREATED
     'trumpet-splunk-prod-ap-south-1', # CREATED
-    'trumpet-splunk-prod-sa-east-1' # CREATED
+    'trumpet-splunk-prod-sa-east-1', # CREATED
+    'trumpet-splunk-prod-eu-north-1', # CREATED
+    'trumpet-splunk-prod-ap-northeast-3', # CREATED
+    'trumpet-splunk-prod-ap-east-1', # CREATED
+    'trumpet-splunk-prod-af-south-1', # CREATED
+    'trumpet-splunk-prod-me-south-1' # CREATED
+    'trumpet-splunk-prod-eu-south-1', # CREATED
 ]
 
 serverless = boto3.session.Session(profile_name='serverless')
-
-s3 = serverless.client('s3')
 automation_configuration_path_base = '../splunk-aws-automation-configuration/lambda_code'
 automation_path_base = '../splunk-aws-automation/lambda_code'
 
@@ -46,7 +52,12 @@ for directory in os.listdir(automation_configuration_path_base):
         for bucket in buckets:
             print("Automation configuration artifact:{} {}".format(bucket, directory))
             with open(directory + '.zip', 'rb') as data:
-                s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
+                match = re.search(r'trumpet-splunk-prod-(.*)$', bucket)
+                if match.group(1):
+                    s3 = serverless.client('s3', match.group(1))
+                    s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
+                else:
+                    print("Incorrect region name suffix in bucket name {}".format(bucket))
 
 
 # Automation artifact zip and upload
@@ -56,4 +67,9 @@ for directory in os.listdir(automation_path_base):
         for bucket in buckets:
             print("Automation artifact:{} {}".format(bucket, directory))
             with open(directory + '.zip', 'rb') as data:
-                s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
+                match = re.search(r'trumpet-splunk-prod-(.*)$', bucket)
+                if match.group(1):
+                    s3 = serverless.client('s3', match.group(1))
+                    s3.upload_fileobj(data, bucket, directory + '.zip', ExtraArgs={'ACL':'public-read'})
+                else:
+                    print("Incorrect region name suffix in bucket name {}".format(bucket))
