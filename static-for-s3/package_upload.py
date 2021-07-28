@@ -24,7 +24,7 @@ buckets = [
     'trumpet-splunk-prod-ap-northeast-3', # CREATED
     'trumpet-splunk-prod-ap-east-1', # CREATED
     'trumpet-splunk-prod-af-south-1', # CREATED
-    'trumpet-splunk-prod-me-south-1' # CREATED
+    'trumpet-splunk-prod-me-south-1', # CREATED
     'trumpet-splunk-prod-eu-south-1', # CREATED
 ]
 
