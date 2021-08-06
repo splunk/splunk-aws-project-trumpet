@@ -88,11 +88,10 @@ def find_key_value_pairs(q, keys, dicts=None):
 def processRecords(records):
     for r in records:
         data = json.loads(base64.b64decode(r['data']))
-        #print("Data in processRecords")
-        #print(data)
         recId = r['recordId']
         return_event = {}
-        st = data['source'].replace(".", ":") + ":firehose"
+        # Set splunk sourcetype to aws:cloudwatch:guardduty
+        st = data['source'].replace(".", ":cloudwatch:")
         prefix_url='https://console.aws.amazon.com/detective/home?region='     
         data['detail']['detectiveUrls'] = {}
         
@@ -105,9 +104,6 @@ def processRecords(records):
 
         scopeStart = str((int(scopeStartTimestamp.timestamp())))+'000'
         scopeEnd = str((int(scopeEndTimestamp.timestamp())))+'000'
-
-        #scopeStart = str(int(time.mktime(time.strptime(data['detail']['service']['eventFirstSeen'], "%Y-%m-%dT%H:%M:%SZ"))))
-        #scopeEnd = str(int(time.mktime(time.strptime(data['detail']['service']['eventLastSeen'], "%Y-%m-%dT%H:%M:%SZ"))))
 
         ## Set Guard Duty Findings List to generate Guard Duty findings URL
         guard_duty_findings_list = ['CredentialAccess:IAMUser/AnomalousBehavior','DefenseEvasion:IAMUser/AnomalousBehavior','Discovery:IAMUser/AnomalousBehavior','Exfiltration:IAMUser/AnomalousBehavior'
