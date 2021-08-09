@@ -193,9 +193,6 @@ def processRecords(records):
                     data['detail']['detectiveUrls']['localIpAddress'+str(index + 1)]  = prefix_url+data['region']+'#entities/IpAddress/'+v['ipAddressV4']+'?scopeStart='+scopeStart+'&scopeEnd='+scopeEnd
                 index += 1
 
-        return_event['sourcetype'] = st
-        return_event['event'] = data['detail']
-
         ## Get External Remote ip addresses
         remoteIpAddress = find_key_value_pairs(data['detail'], 'remoteIpDetails')
         
@@ -209,6 +206,7 @@ def processRecords(records):
                 index += 1
 
         return_event['sourcetype'] = st
+        return_event['event'] = data['detail']
 
         if IS_PY3:
             # base64 encode api changes in python3 to operate exclusively on byte-like objects and bytes
