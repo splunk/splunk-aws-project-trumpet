@@ -5,26 +5,15 @@ and process detective URLs based on the findings.
 Cloudwatch Logs sends to Firehose records that look like this:
 
 {
-  "messageType": "DATA_MESSAGE",
-  "owner": "123456789012",
-  "logGroup": "log_group_name",
-  "logStream": "log_stream_name",
-  "subscriptionFilters": [
-    "subscription_filter_name"
-  ],
-  "logEvents": [
-    {
-      "id": "01234567890123456789012345678901234567890123456789012345",
-      "timestamp": 1510109208016,
-      "message": "log message 1"
-    },
-    {
-      "id": "01234567890123456789012345678901234567890123456789012345",
-      "timestamp": 1510109208017,
-      "message": "log message 2"
-    }
-    ...
-  ]
+         "version": "0",
+         "id": "cd2d702e-ab31-411b-9344-793ce56b1bc7",
+         "detail-type": "GuardDuty Finding",
+         "source": "aws.guardduty",
+         "account": "111122223333",
+         "time": "1970-01-01T00:00:00Z",
+         "region": "us-east-1",
+         "resources": [],
+         "detail": {GUARDDUTY_FINDING_JSON_OBJECT}
 }
 
 The code below will:
@@ -45,23 +34,6 @@ import datetime
 from datetime import timedelta
 
 IS_PY3 = sys.version_info[0] == 3
-
-def transformLogEvent(log_event, source):
-    """Transform each log event.
-
-    The default implementation below just extracts the message and appends a newline to it.
-
-    Args:
-    log_event (dict): The original log event. Structure is {"id": str, "timestamp": long, "message": str}
-
-    Returns:
-    str: The transformed log event.
-    """
-    return_event = {}
-    return_event['sourcetype'] = 'aws:cloudwatchlogs'
-    return_event['source'] = source
-    return_event['event'] = log_event['message']
-    return json.dumps(return_event) + '\n'
 
 def find_key_value_pairs(q, keys, dicts=None):
     if not dicts:
