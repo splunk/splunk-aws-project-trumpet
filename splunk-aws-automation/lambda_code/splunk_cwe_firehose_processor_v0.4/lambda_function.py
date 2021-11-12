@@ -104,7 +104,7 @@ def processRecords(records):
         else:
             data = base64.b64encode(json.dumps(return_event))
 
-        if len(data) <= 600000:
+        if len(data) <= 6000000:
             yield {
                 'data': data,
                 'result': 'Ok',
