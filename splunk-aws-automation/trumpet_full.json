@@ -41,7 +41,7 @@
                               "Arn"
                             ]
                           },
-                          "Runtime": "python2.7",
+                          "Runtime": "python3.7",
                           "Timeout": "30"
                         }
                     },
@@ -228,7 +228,7 @@
                                 ]
                             },
                             "Timeout": 900,
-                            "Runtime": "nodejs6.10"
+                            "Runtime": "nodejs14.x"
                         }
                     },
                     "ConfigurationRecorderLambdaExecutionRole": {
@@ -347,7 +347,7 @@
                               "S3Bucket": { "Fn::FindInMap" : [ "BucketMap", { "Ref" : "AWS::Region" }, "BucketName"]},
                               "S3Key": "config_discovery.zip"
                             },
-                            "Runtime": "nodejs6.10",
+                            "Runtime": "nodejs14.x",
                             "Handler": "index.handler",
                             "Role": {
                                 "Fn::GetAtt": [
@@ -430,7 +430,7 @@
                             "Description": "S3 Object Custom Resource",
                             "Timeout": 300,
                             "Handler": "index.handler",
-                            "Runtime": "nodejs6.10"
+                            "Runtime": "nodejs14.x"
                         }
                     },
                     "S3BucketConfig": {
@@ -517,7 +517,7 @@
                                 ]
                             },
                             "Timeout": 300,
-                            "Runtime": "python2.7"
+                            "Runtime": "python3.7"
                         }
                     },
                     "CWEFindingEventRule": {
@@ -813,7 +813,7 @@
                                 ]
                             },
                             "Timeout": 300,
-                            "Runtime": "python2.7"
+                            "Runtime": "python3.7"
                         }
                     },
                     "CWLtoKinesisFirehoseRole": {
@@ -1398,7 +1398,7 @@
                                 ]
                             },
                             "Timeout": 300,
-                            "Runtime": "python2.7"
+                            "Runtime": "python3.7"
                         }
                     },
                     "ConfigRole": {
