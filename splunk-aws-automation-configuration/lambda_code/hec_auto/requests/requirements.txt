@@ -1,5 +1,5 @@
 alabaster==0.7.7
-Babel==2.2.0
+Babel==2.9.1
 coverage==4.0.3
 decorator==4.0.9
 docutils==0.12
