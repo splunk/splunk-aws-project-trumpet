@@ -9,7 +9,7 @@ itsdangerous==0.24
 Jinja2==2.8
 MarkupSafe==0.23
 py==1.4.31
-Pygments==2.1.1
+Pygments==2.15.0
 pytest==2.8.7
 pytest-cov==2.2.1
 pytest-httpbin==0.2.0
